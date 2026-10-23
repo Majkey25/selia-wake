@@ -2,7 +2,6 @@ package com.majkeylab.seliawake
 
 import android.content.Context
 import android.net.ConnectivityManager
-import android.net.Network
 import android.net.NetworkCapabilities
 import java.net.Inet4Address
 import java.net.InetAddress
@@ -10,7 +9,7 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.DatagramChannel
 
-internal data class LanNetwork(val network: Network, val address: Inet4Address, val broadcast: Inet4Address)
+internal data class LanNetwork(val address: Inet4Address, val broadcast: Inet4Address)
 
 internal object LanNetworks {
     private fun physical(context: Context): List<LanNetwork> {
@@ -36,7 +35,7 @@ internal object LanNetworks {
                 val ip = address.address.fold(0) { value, byte -> (value shl 8) or (byte.toInt() and 255) }
                 val broadcast = ip or (-1 ushr prefix)
                 val bytes = ByteArray(4) { (broadcast ushr (24 - it * 8)).toByte() }
-                LanNetwork(network, address, InetAddress.getByAddress(bytes) as Inet4Address)
+                LanNetwork(address, InetAddress.getByAddress(bytes) as Inet4Address)
             }
         }
     }
@@ -74,8 +73,7 @@ internal object LanNetworks {
             channel.configureBlocking(false)
             val socket = channel.socket()
             socket.broadcast = true
-            // Bind this socket, never the process, so Tailscale remains the inbound path.
-            lan.network.bindSocket(socket)
+            // Bind the LAN source address. Android VPNs can reject explicit Network.bindSocket.
             channel.bind(InetSocketAddress(lan.address, 0))
             val packet = target.packet()
             if (channel.send(ByteBuffer.wrap(packet), InetSocketAddress(target.broadcast, 9)) != packet.size) {

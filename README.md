@@ -35,7 +35,7 @@ Pairing keys live in operating-system secure storage. Wake requests use HMAC-SHA
 
 The Waker listens on TCP **45879** and sends magic packets on local UDP **9**. Tailscale supplies transport encryption. The app does not embed Tailscale, change your firewall, configure your router, or open public internet ports. If a desktop firewall blocks the Waker, allow only your intended Tailscale peers. Do not forward the relay port from the public internet.
 
-Android broadcasts use the physical Wi-Fi network rather than the VPN route. Guest Wi-Fi or access-point isolation can block communication between wireless and wired devices.
+Android broadcasts bind to the physical Wi-Fi IPv4 address. If you use a Tailscale exit node, allow local LAN access; the app does not bypass a VPN policy that blocks LAN traffic. Guest Wi-Fi or access-point isolation can also block communication between wireless and wired devices.
 
 ## Build
 

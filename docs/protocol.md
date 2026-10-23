@@ -6,7 +6,7 @@ Secret: 32 random bytes, represented as unpadded base64url. Signature: HMAC-SHA2
 
 200 JSON {"status":"sent"} only after the configured target receives a successful UDP send call. Error responses use {"error":"invalid_request|unauthorized|expired|replay|rate_limited|wifi_unavailable|send_failed"}. Never accept target addresses or MACs from a remote request. No health endpoint exposing target details.
 
-Magic packet: six 0xff bytes then sixteen copies of the six-byte target MAC. UDP port 9 on physical LAN, never through the VPN. Android selects Wi-Fi using NetworkCapabilities.TRANSPORT_WIFI and Network.bindSocket. Desktop selects the LAN IPv4 source address. One target per Waker.
+Magic packet: six 0xff bytes then sixteen copies of the six-byte target MAC. UDP port 9 on the physical LAN. Android selects Wi-Fi using NetworkCapabilities.TRANSPORT_WIFI and binds the socket to that network's IPv4 source address. Explicit Network.bindSocket can fail with EPERM under Android VPNs. Desktop also binds the LAN IPv4 source address. VPN policy must permit local LAN traffic. One target per Waker.
 
 ## Flutter Android interface
 
