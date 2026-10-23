@@ -1,0 +1,14 @@
+.reference/
+.dart_tool/
+.flutter-plugins-dependencies
+build/
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.log
+*.iml
+.idea/
+*.code-workspace

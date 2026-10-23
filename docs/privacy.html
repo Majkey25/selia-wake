@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Selia Wake privacy policy</title>
+<style>body{font:17px/1.6 system-ui,sans-serif;max-width:720px;margin:64px auto;padding:0 24px;color:#253043;background:#f4f6fa}h1{line-height:1.1}a{color:#315d82}</style>
+<h1>Selia Wake privacy policy</h1>
+<p>Effective 23 October 2026. Developer: MajkeyLab.</p>
+<p>Selia Wake sends Wake-on-LAN requests between devices you configure. It has no developer-operated server, account, analytics, advertising, or tracking SDK.</p>
+<h2>Data on your devices</h2>
+<p>The app stores your settings, device names, network addresses, and target MAC address locally. Pairing secrets are stored using the operating system's secure storage. Android app backup is disabled. You can remove the app's local data through your device settings or by uninstalling it.</p>
+<h2>Network requests</h2>
+<p>When you press Wake, the app sends a timestamp, a random nonce, and a cryptographic signature to your paired Waker through Tailscale. Your Waker sends a magic packet containing the target MAC address on your local network. These requests are not sent to MajkeyLab. The Waker keeps a bounded, short-lived nonce cache in memory to prevent repeated requests.</p>
+<p>Tailscale is a separate application and service, governed by its own <a href="https://tailscale.com/privacy-policy">privacy policy</a>. Selia Wake does not receive your Tailscale account credentials.</p>
+<h2>Permissions</h2>
+<p>Network and Wi-Fi permissions allow communication with your devices. On Android, the visible Waker foreground service and wake lock keep the relay available while it is enabled. Notifications show the relay state and provide a Stop action. The app does not request access to your contacts, location, microphone, camera, photos, or files.</p>
+<h2>Control and contact</h2>
+<p>You can stop the Waker, replace its pairing key, or remove a pairing in the app. Share pairing codes only with people you trust. Questions and privacy requests can be submitted through the <a href="https://github.com/Majkey25/selia-wake/issues">project issue tracker</a>. Do not post pairing codes or other private information there.</p>
+</html>
