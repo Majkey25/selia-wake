@@ -1,21 +1,48 @@
-MIT License
+Selia Wake Source-Visible Proprietary License
 
-Copyright (c) 2026 MajkeyLab
+Copyright (c) 2026 Majkey25. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Scope
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+This license applies to original Selia Wake material in the repository revision
+that introduces this license and original material published later with it.
+It does not apply to third-party material. Earlier copies distributed under
+the MIT License retain that license as explained in section 4.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. Official release use
+
+You may download, install, and use unmodified official Selia Wake releases for
+any lawful purpose. You may build the official ESP32 firmware without modifying
+it solely to install it on your own devices. An official release is distributed
+by Majkey25 through this project's GitHub Releases, Google Play, or another
+channel explicitly identified by Majkey25.
+
+3. Source visibility
+
+The source repository is public for inspection. Except for the permissions
+above, no permission is granted to copy, modify, build, distribute, sublicense,
+sell, or create derivative works from material covered by this license.
+GitHub features such as viewing and platform-provided forking remain subject
+to GitHub's terms. Rights required by applicable law are not restricted.
+Additional permission requires prior written authorization from Majkey25.
+
+4. Historical MIT grants
+
+Material previously distributed under the MIT License remains available under
+that license for those historical copies. This license does not revoke or
+limit an earlier MIT grant. See HISTORICAL_MIT_RELEASES.md.
+
+5. Third-party material and names
+
+Third-party software, services, and marks remain subject to their own terms.
+See THIRD_PARTY_NOTICES.md. This license grants no right to use Selia Wake or
+Majkey25 names, logos, or other brand features except to identify an unmodified
+official release accurately.
+
+6. No warranty
+
+THE SOFTWARE AND MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE, AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY LAW,
+THE COPYRIGHT HOLDER IS NOT LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY
+ARISING FROM THE SOFTWARE OR ITS USE.

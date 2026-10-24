@@ -37,3 +37,45 @@ Google Play internal-track availability must be checked in Play Console separate
 * GitHub Actions run 40072210858 passed verification and built Windows and Linux from commit 766b00bbe05d2ede9feef444e928b635aa0d55a5. Subsequent website-only copy edits do not change application source.
 * All five public HTML pages returned HTTP 200, as did the shared CSS. The website was checked in a real browser at desktop and 360 px mobile width, including navigation, the WoWLAN commands, contact and removal pages. Mobile pages had no horizontal document overflow. Privacy policy URL in Play Console matches the public page.
 * Physical PC sleep/wake, Linux GUI runtime and full desktop GUI flows remain unverified. The website and internal releases do not establish production Google Play approval; additional Play Console declarations remain separate.
+
+## 24 October 2026, version 0.2.0
+
+* Added platform-style Flutter controls, Fluent controls on Windows, Material
+  You, Terminal, Matrix and a custom palette/font/size/corners/borders editor.
+  These are Flutter-rendered controls, not OS-owned WinUI or GTK widgets.
+* All 27 Flutter tests passed locally. Two Android JVM tests passed, including
+  the future-timestamp replay regression and exact minimum-TTL reuse. The
+  regression failed before the fix in Go, Dart and Android.
+* Windows Go tests and vet passed. Production CLI commands were exercised
+  through real Tailscale HTTP and physical Wi-Fi UDP, with exact 102-byte magic
+  packets received independently. No target sleep or boot was attempted.
+* On the physical HUAWEI YAL-L21, custom colors and corner radius saved,
+  survived force-stop/relaunch, reset correctly, and saved while the Waker was
+  running with a successful stop/restart. Existing target and pairing survived
+  the update. The phone was left in Platform style with its Waker running.
+* The final signed ARM64 release APK was installed over the existing app. Its
+  QR was decoded privately in memory and imported by the production Windows
+  CLI. Two signed requests through Tailscale produced the exact configured
+  packet from the phone's physical Wi-Fi, including with its screen off.
+  No pairing secret or QR image was retained in the test evidence.
+* Universal and per-ABI Android APKs and the AAB built. Signature verification
+  matched the existing upload certificate; universal APK 16 KB zip alignment
+  and bundle validation passed. ARM64 APK size is about 18.4 MB.
+  All final Android packages use version code 3006. ABI offsets are disabled
+  so GitHub APKs cannot block later Google Play updates with a higher code.
+* All six English HTML pages and CSS returned HTTP 200 locally. Local links
+  and anchors passed validation. Real browser checks at desktop and 360 px
+  mobile width found no horizontal document overflow.
+* Optional Claude review could not run because of its weekly quota. Requested
+  Argon high and Muse xhigh OpenCode calls failed with HTTP 402 and an account
+  balance of zero. No funds were added. Free Beam, DeepSeek and GLM provided
+  bounded documentation advice; primary checked their claims. Antigravity
+  supplied the initial ESP32 implementation, which required primary fixes.
+* A fresh isolated ESP32 Arduino core 3.3.12 build passed for
+  `esp32:esp32:esp32`: 945,693 bytes of program space and 53,236 bytes of global
+  data. An earlier cached core link failed on ESP symbols; the isolated build
+  did not reuse that cache. Separate bounded CLI/protocol and ESP32 source
+  reviews found no remaining confirmed P1/P2 in their supplied snapshots.
+* Linux GUI execution, Raspberry Pi execution, ESP32 flashing/on-board behavior,
+  sustained background availability and actual PC wake remain separate checks.
+  The local Windows GUI build remains blocked by missing ATL `atlstr.h`.

@@ -1,8 +1,10 @@
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/settings.dart';
+import 'ui/controls.dart';
 import 'ui/home.dart';
 import 'ui/strings.dart';
 import 'ui/theme.dart';
@@ -59,14 +61,16 @@ class _SeliaWakeAppState extends State<SeliaWakeApp> {
         title: 'Selia Wake',
         debugShowCheckedModeBanner: false,
         theme: wakeTheme(
-          settings?.theme ?? WakeTheme.terminal,
+          settings?.theme ?? WakeTheme.platform,
           Brightness.light,
           light,
+          custom: settings?.customTheme,
         ),
         darkTheme: wakeTheme(
-          settings?.theme ?? WakeTheme.terminal,
+          settings?.theme ?? WakeTheme.platform,
           Brightness.dark,
           dark,
+          custom: settings?.customTheme,
         ),
         themeMode: settings?.appearance ?? ThemeMode.system,
         themeAnimationDuration: Duration.zero,
@@ -74,7 +78,11 @@ class _SeliaWakeAppState extends State<SeliaWakeApp> {
             ? null
             : Locale(settings.language),
         supportedLocales: const [Locale('en'), Locale('cs')],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        localizationsDelegates: const [
+          ...GlobalMaterialLocalizations.delegates,
+          fluent.FluentLocalizations.delegate,
+        ],
+        builder: wakePlatformBuilder,
         home: settings != null
             ? WakeHome(settings: settings, save: _save)
             : Builder(
@@ -119,7 +127,8 @@ class _SeliaWakeAppState extends State<SeliaWakeApp> {
                                   textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 16),
-                                FilledButton.icon(
+                                WakeButton(
+                                  primary: true,
                                   onPressed: _load,
                                   icon: const Icon(Icons.refresh_rounded),
                                   label: Text(s.retry),

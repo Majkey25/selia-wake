@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../core/protocol.dart';
 import '../core/relay.dart';
 import '../core/settings.dart';
+import 'controls.dart';
 import 'settings_page.dart';
 import 'strings.dart';
 
@@ -291,102 +292,93 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
                 'Vložte párovací odkaz v nastavení.',
               );
     final label = waker ? (running ? s.stop : s.start) : s.wake;
-    return Scaffold(
+    return WakeScaffold(
+      title: 'Selia Wake',
+      actions: [
+        WakeIconButton(
+          tooltip: s.settings,
+          onPressed: _busy || _editing ? null : _openSettings,
+          icon: const Icon(Icons.settings_outlined),
+        ),
+        const SizedBox(width: 8),
+      ],
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(color: scheme.outline),
-                ),
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Selia Wake',
-                              style: theme.textTheme.titleMedium,
-                            ),
-                          ),
-                          Tooltip(
-                            message: s.settings,
-                            child: TextButton(
-                              onPressed: _busy ? null : _openSettings,
-                              child: Text(s.settings),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(),
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            target == null || target.isEmpty
-                                ? s.computer
-                                : target,
-                            style: theme.textTheme.titleMedium,
+                          Row(
+                            children: [
+                              const Icon(Icons.computer_outlined),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  target == null || target.isEmpty
+                                      ? s.computer
+                                      : target,
+                                  style: theme.textTheme.titleLarge,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            '${s.text('Mode', 'Režim')}: ${waker ? s.waker : s.user}',
+                          Semantics(
+                            liveRegion: true,
+                            child: ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                waker
+                                    ? Icons.router_outlined
+                                    : Icons.devices_outlined,
+                              ),
+                              title: Text(waker ? s.waker : s.user),
+                              subtitle: Text(status),
+                            ),
                           ),
                           const SizedBox(height: 20),
                           Semantics(
                             liveRegion: true,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(status),
-                                const SizedBox(height: 4),
-                                SelectableText(
-                                  detail,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: _statusFailed || error != null
-                                        ? scheme.error
-                                        : null,
-                                  ),
-                                ),
-                              ],
+                            child: SelectableText(
+                              detail,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: _statusFailed || error != null
+                                    ? scheme.error
+                                    : null,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 20),
-                          FilledButton(
+                          WakeButton(
+                            primary: true,
                             onPressed:
                                 _busy || _editing || (waker && _status == null)
                                 ? null
                                 : _act,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_busy) ...[
-                                  const SizedBox.square(
+                            icon: _busy
+                                ? const SizedBox.square(
                                     dimension: 16,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                     ),
+                                  )
+                                : Icon(
+                                    waker && running
+                                        ? Icons.stop_rounded
+                                        : Icons.power_settings_new_rounded,
                                   ),
-                                  const SizedBox(width: 10),
-                                ],
-                                Flexible(
-                                  child: Text(
-                                    label,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            ),
+                            label: Text(label, textAlign: TextAlign.center),
                           ),
                           if (_message != null)
                             Padding(
@@ -402,9 +394,11 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
                               ),
                             ),
                           if (waker && _statusFailed)
-                            TextButton(
+                            WakeButton(
+                              subtle: true,
                               onPressed: _busy ? null : _refresh,
-                              child: Text(s.retry),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: Text(s.retry),
                             ),
                         ],
                       ),

@@ -7,6 +7,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../core/protocol.dart';
 import '../core/relay.dart';
 import '../core/settings.dart';
+import 'controls.dart';
+import 'custom_theme_editor.dart';
 import 'strings.dart';
 import 'setup_guide.dart';
 import 'privacy_page.dart';
@@ -217,23 +219,19 @@ class _SettingsPageState extends State<SettingsPage> {
     String? hint,
     String? Function(String?)? validator,
     bool numeric = false,
+    IconData icon = Icons.edit_outlined,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
-    child: TextFormField(
+    child: WakeField(
       controller: controller,
       readOnly: _saving,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        errorMaxLines: 4,
-      ),
+      label: label,
+      hint: hint,
+      icon: icon,
       validator: validator,
       keyboardType: numeric
           ? const TextInputType.numberWithOptions(decimal: true)
           : TextInputType.text,
-      textInputAction: TextInputAction.next,
-      autocorrect: false,
-      enableSuggestions: false,
     ),
   );
 
@@ -244,19 +242,13 @@ class _SettingsPageState extends State<SettingsPage> {
     final isWaker = _draft.role == DeviceRole.waker;
     return PopScope(
       canPop: !_saving && !_scanning,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(s.settings),
-          bottom: const PreferredSize(
-            preferredSize: Size.fromHeight(1),
-            child: Divider(),
-          ),
-        ),
+      child: WakeScaffold(
+        title: s.settings,
         body: SafeArea(
           top: false,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: const BoxConstraints(maxWidth: 600),
               child: Form(
                 key: _form,
                 child: ListView(
@@ -270,6 +262,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _draft.role,
                       (role) => role == DeviceRole.waker ? s.waker : s.user,
                       (role) => setState(() => _draft.role = role),
+                      icon: Icons.devices_outlined,
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -294,6 +287,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         },
                         (connection) =>
                             setState(() => _draft.connection = connection),
+                        icon: Icons.cable_outlined,
                       ),
                       const SizedBox(height: 12),
                       Text(switch (_draft.connection) {
@@ -314,6 +308,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _field(
                         _name,
                         s.name,
+                        icon: Icons.computer_outlined,
                         hint: s.computer,
                         validator: (v) => (v?.trim().length ?? 0) > 80
                             ? s.text(
@@ -325,6 +320,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _field(
                         _mac,
                         'MAC',
+                        icon: Icons.memory_outlined,
                         hint: '00:11:22:33:44:55',
                         validator: _validateMac,
                       ),
@@ -335,6 +331,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           'Broadcast IPv4 · volitelné',
                         ),
                         hint: s.text('Automatic', 'Automaticky'),
+                        icon: Icons.broadcast_on_personal_outlined,
                         numeric: true,
                         validator: (v) =>
                             v == null ||
@@ -349,6 +346,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           _lan,
                           s.text('Waker LAN IPv4', 'LAN IPv4 budiče'),
                           hint: '192.168.1.20',
+                          icon: Icons.lan_outlined,
                           numeric: true,
                           validator: (v) =>
                               v == null ||
@@ -364,6 +362,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           'Tailscale IPv4 budiče · volitelné',
                         ),
                         hint: '100.x.x.x',
+                        icon: Icons.vpn_lock_outlined,
                         numeric: true,
                         validator: (v) =>
                             v == null ||
@@ -374,7 +373,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: OutlinedButton.icon(
+                        child: WakeButton(
                           onPressed: _saving || _detecting ? null : _detect,
                           icon: _detecting
                               ? const SizedBox.square(
@@ -407,7 +406,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           leading: const Icon(Icons.link_rounded),
                           title: Text(paired.name),
                           subtitle: Text(paired.host),
-                          trailing: IconButton(
+                          trailing: WakeIconButton(
                             tooltip: s.text(
                               'Forget pairing',
                               'Zapomenout párování',
@@ -424,27 +423,23 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         const SizedBox(height: 12),
                       ],
-                      TextFormField(
+                      WakeField(
                         controller: _pairing,
+                        label: s.pairing,
+                        hint: 'seliawake://pair?data=…',
+                        icon: Icons.key_outlined,
                         onChanged: (_) =>
                             setState(() => _pendingPairing = null),
                         readOnly: _saving,
-                        obscureText: true,
-                        autocorrect: false,
-                        enableSuggestions: false,
+                        obscure: true,
                         keyboardType: TextInputType.visiblePassword,
-                        decoration: InputDecoration(
-                          labelText: s.pairing,
-                          hintText: 'seliawake://pair?data=…',
-                          errorMaxLines: 4,
-                          suffixIcon: IconButton(
-                            tooltip: s.text(
-                              'Paste pairing link',
-                              'Vložit párovací odkaz',
-                            ),
-                            onPressed: _saving ? null : _paste,
-                            icon: const Icon(Icons.content_paste_rounded),
+                        suffix: WakeIconButton(
+                          tooltip: s.text(
+                            'Paste pairing link',
+                            'Vložit párovací odkaz',
                           ),
+                          onPressed: _saving ? null : _paste,
+                          icon: const Icon(Icons.content_paste_rounded),
                         ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return null;
@@ -464,7 +459,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: 12),
                       ],
                       if (Platform.isAndroid) ...[
-                        OutlinedButton.icon(
+                        WakeButton(
                           onPressed: _saving || _scanning ? null : _scan,
                           icon: const Icon(Icons.qr_code_scanner, size: 18),
                           label: Text(s.text('Scan QR code', 'Načíst QR kód')),
@@ -487,13 +482,42 @@ class _SettingsPageState extends State<SettingsPage> {
                       WakeTheme.values,
                       _draft.theme,
                       (theme) => switch (theme) {
+                        WakeTheme.platform => s.platformTheme,
                         WakeTheme.material => 'Material You',
                         WakeTheme.matrix => 'Matrix',
                         WakeTheme.terminal => 'Terminal',
+                        WakeTheme.custom => s.text('Custom', 'Vlastní'),
                       },
                       (theme) => setState(() => _draft.theme = theme),
+                      icon: Icons.palette_outlined,
                     ),
-                    if (_draft.theme != WakeTheme.matrix) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      s.platformStyleHelp,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (_draft.theme == WakeTheme.custom) ...[
+                      const SizedBox(height: 20),
+                      CustomThemeEditor(
+                        key: ObjectKey(_draft.customTheme),
+                        value: _draft.customTheme,
+                        readOnly: _saving,
+                      ),
+                      WakeButton(
+                        subtle: true,
+                        onPressed: _saving
+                            ? null
+                            : () => setState(
+                                () => _draft.customTheme = CustomTheme(),
+                              ),
+                        icon: const Icon(Icons.restore),
+                        label: Text(
+                          s.text('Reset custom theme', 'Obnovit vlastní motiv'),
+                        ),
+                      ),
+                    ],
+                    if (_draft.theme != WakeTheme.matrix &&
+                        _draft.theme != WakeTheme.custom) ...[
                       const SizedBox(height: 16),
                       _select<ThemeMode>(
                         s.text('Appearance', 'Barevný režim'),
@@ -505,6 +529,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ThemeMode.dark => s.text('Dark', 'Tmavý'),
                         },
                         (mode) => setState(() => _draft.appearance = mode),
+                        icon: Icons.brightness_6_outlined,
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -518,6 +543,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         _ => s.text('System', 'Systém'),
                       },
                       (language) => setState(() => _draft.language = language),
+                      icon: Icons.language_outlined,
                     ),
                     if (_error != null)
                       Padding(
@@ -531,7 +557,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                     const SizedBox(height: 16),
-                    FilledButton.icon(
+                    WakeButton(
+                      primary: true,
                       onPressed: _saving || _detecting || _scanning
                           ? null
                           : _save,
@@ -545,7 +572,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     if (isWaker) ...[
                       const SizedBox(height: 12),
-                      OutlinedButton.icon(
+                      WakeButton(
                         onPressed: _saving || _detecting || _scanning
                             ? null
                             : _share,
@@ -556,7 +583,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ],
                     const SizedBox(height: 8),
-                    TextButton(
+                    WakeButton(
+                      subtle: true,
+                      icon: const Icon(Icons.help_outline),
                       onPressed: _saving || _scanning
                           ? null
                           : () => Navigator.of(context).push<void>(
@@ -564,14 +593,16 @@ class _SettingsPageState extends State<SettingsPage> {
                                 builder: (_) => const SetupGuide(),
                               ),
                             ),
-                      child: Text(
+                      label: Text(
                         s.text(
                           'Tailscale & pairing guide',
                           'Tailscale a párování: návod',
                         ),
                       ),
                     ),
-                    TextButton(
+                    WakeButton(
+                      subtle: true,
+                      icon: const Icon(Icons.privacy_tip_outlined),
                       onPressed: _saving || _scanning
                           ? null
                           : () => Navigator.of(context).push<void>(
@@ -579,7 +610,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 builder: (_) => const PrivacyPage(),
                               ),
                             ),
-                      child: Text(
+                      label: Text(
                         s.text('Privacy & support', 'Soukromí a podpora'),
                       ),
                     ),
@@ -598,20 +629,15 @@ class _SettingsPageState extends State<SettingsPage> {
     List<T> values,
     T selected,
     String Function(T) label,
-    ValueChanged<T> change,
-  ) => DropdownButtonFormField<T>(
-    initialValue: selected,
-    isExpanded: true,
-    decoration: InputDecoration(labelText: title),
-    items: [
-      for (final value in values)
-        DropdownMenuItem(value: value, child: Text(label(value))),
-    ],
-    onChanged: _saving
-        ? null
-        : (value) {
-            if (value != null) change(value);
-          },
+    ValueChanged<T> change, {
+    IconData icon = Icons.tune,
+  }) => WakeSelect<T>(
+    label: title,
+    value: selected,
+    values: values,
+    itemLabel: label,
+    icon: icon,
+    onChanged: _saving ? null : change,
   );
 }
 
@@ -644,7 +670,7 @@ class _PairingDialogState extends State<_PairingDialog> {
   @override
   Widget build(BuildContext context) {
     final s = Strings.of(context);
-    return AlertDialog(
+    return WakeDialog(
       title: Text(
         s.text('Pair a trusted device', 'Spárovat důvěryhodné zařízení'),
       ),
@@ -656,18 +682,15 @@ class _PairingDialogState extends State<_PairingDialog> {
             Text('${widget.pairing.name}\n${widget.pairing.host}'),
             const SizedBox(height: 16),
             Center(
-              child: SizedBox(
-                width: 260,
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: QrImageView(
-                    data: widget.pairing.encode(),
-                    backgroundColor: Colors.white,
-                    padding: const EdgeInsets.all(16),
-                    semanticsLabel: s.text(
-                      'Secret pairing QR code',
-                      'Tajný párovací QR kód',
-                    ),
+              child: SizedBox.square(
+                dimension: 260,
+                child: QrImageView(
+                  data: widget.pairing.encode(),
+                  backgroundColor: Colors.white,
+                  padding: const EdgeInsets.all(16),
+                  semanticsLabel: s.text(
+                    'Secret pairing QR code',
+                    'Tajný párovací QR kód',
                   ),
                 ),
               ),
@@ -708,11 +731,13 @@ class _PairingDialogState extends State<_PairingDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        WakeButton(
+          subtle: true,
           onPressed: () => Navigator.pop(context),
-          child: Text(s.text('Close', 'Zavřít')),
+          label: Text(s.text('Close', 'Zavřít')),
         ),
-        FilledButton.icon(
+        WakeButton(
+          primary: true,
           onPressed: _copy,
           icon: const Icon(Icons.copy_rounded),
           label: Text(s.text('Copy link', 'Kopírovat odkaz')),

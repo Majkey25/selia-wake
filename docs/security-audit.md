@@ -12,6 +12,31 @@ On the physical Android Waker, a live test made 35 empty TCP connections, then 6
 
 A second bounded, read-only source review by Codex 6.1 at extra-high reasoning found no remaining confirmed P1/P2 in the reviewed scope. The primary checked the advice against the diff and reproduced the protocol behavior separately. Reviewer agreement is not runtime proof.
 
+## Version 0.2.0 protocol review
+
+An independent CLI source review found a second P2: a request accepted at time T
+with timestamp T+30 could replay at T+60. Its original 60-second nonce entry had
+expired, but the timestamp still passed the inclusive 30-second freshness check.
+Go, Dart and Android now retain it through the final accepted timestamp second,
+with a minimum 60-second TTL. Regression tests reproduced the failure before
+the fix and passed afterward. Android uses elapsed time for the retained entry.
+
+A fresh source-snapshot review by GPT-6 Astra at extra-high reasoning found no
+confirmed P1/P2 in the supplied CLI, Dart protocol and Android protocol scope.
+The reviewer did not execute tests, verify file hashes, or inspect all service
+callers. Primary verification included Go tests/vet, Dart protocol tests and
+two Android JVM tests. This is bounded evidence, not a security certification.
+
+The Go CLI binds only its configured Tailscale IPv4 and uses owner-only local
+configuration, including a protected single-user Windows DACL. Its key remains
+plaintext on disk. ESP32 companion firmware is a separate experimental scope
+with plaintext NVS and an external Tailscale gateway requirement.
+
+A separate source-snapshot review found no confirmed P1/P2 in the bounded
+ESP32 firmware and shared C++ parser. Primary compiled the firmware with the
+pinned Arduino core in a fresh isolated build. Flashing, NVS failure behavior,
+live gateway interoperability and actual board execution remain unverified.
+
 ## Pairing and QR boundary
 
 QR and copied links carry the same 32-byte pairing key. Scanning is an explicit Android action, requires camera permission, accepts QR only, limits decoded text to 2048 characters, then uses the existing Pairing.parse validator. Scanned name and host are shown before explicit Save. Cancelling does not persist the draft. Clipboard reads and writes require the corresponding user action.

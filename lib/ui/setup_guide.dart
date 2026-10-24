@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'controls.dart';
 import 'strings.dart';
 
 class SetupGuide extends StatelessWidget {
@@ -62,6 +63,23 @@ class SetupGuide extends StatelessWidget {
         ),
       ),
       (
+        s.text(
+          'Laptop, desktop and Raspberry Pi',
+          'Notebook, počítač a Raspberry Pi',
+        ),
+        s.text(
+          'A second Windows or Linux computer can be The Waker. Keep it powered and awake on the target LAN, and leave Selia Wake open. Check laptop lid-close and sleep settings. For a Raspberry Pi, server or device without a desktop, download the standalone CLI from GitHub Releases. It supports User and Waker commands without Flutter, GTK or a keyring. Choose Linux ARM64 or ARMv7 to match the installed OS. It stores a plaintext secret in a file protected by OS permissions. Do not put that file in a shared or synced folder. CLI and GUI use separate settings. ESP32 boards need the companion firmware and a separate Tailscale gateway; a classic Arduino Uno cannot run the desktop app or Tailscale. Full terminal and device instructions:\nhttps://majkey25.github.io/selia-wake/terminal.html',
+          'Druhý počítač s Windows nebo Linuxem může být budičem. Nechte jej napájený a zapnutý v místní síti cílového PC a aplikaci nezavírejte. Zkontrolujte uspávání při zavření víka notebooku. Pro Raspberry Pi, server nebo zařízení bez plochy stáhněte samostatné CLI z GitHub Releases. Podporuje příkazy uživatele i budiče bez Flutteru, GTK a klíčenky. Zvolte Linux ARM64 nebo ARMv7 podle nainstalovaného systému. Tajný klíč ukládá nešifrovaně do souboru chráněného oprávněními systému. Soubor nedávejte do sdílené nebo synchronizované složky. CLI a grafická aplikace mají oddělená nastavení. ESP32 potřebuje doprovodný firmware a samostatnou bránu Tailscale. Klasické Arduino Uno nespustí desktopovou aplikaci ani Tailscale. Úplný návod pro terminál a zařízení:\nhttps://majkey25.github.io/selia-wake/terminal.html',
+        ),
+      ),
+      (
+        s.text('Appearance', 'Vzhled'),
+        s.text(
+          'Settings offers the platform style, Material You, Terminal, Matrix and Custom. Custom lets you set colors, font, text size, corner radius and border width, with a preview before saving. System permission dialogs keep their OS appearance. The app uses Flutter-rendered standard controls; Windows uses Fluent controls. No decorative graphics or animations are required.',
+          'V nastavení vyberte systémový styl, Material You, Terminal, Matrix nebo Vlastní. Vlastní vzhled umožňuje nastavit barvy, písmo, velikost textu, zaoblení a šířku okrajů s náhledem před uložením. Systémové dialogy oprávnění si ponechají vzhled systému. Aplikace používá standardní prvky vykreslené Flutterem. Windows používá prvky Fluent. Aplikace nepotřebuje dekorativní grafiku ani animace.',
+        ),
+      ),
+      (
         s.text('If it does not work', 'Když probuzení nefunguje'),
         s.text(
           'Check the selected adapter’s connection, MAC, firmware and driver wake settings, and home network isolation. On Windows, check powercfg /lastwake after a test. Connect The Waker to the same LAN. With a Tailscale exit node, allow local LAN access. For a desktop Waker, allow only the intended Tailscale peers through its firewall on TCP 45879. On Android, allow background operation for both apps and power the Waker from a wall charger.',
@@ -69,8 +87,8 @@ class SetupGuide extends StatelessWidget {
         ),
       ),
     ];
-    return Scaffold(
-      appBar: AppBar(title: Text(s.text('Setup guide', 'Návod k propojení'))),
+    return WakeScaffold(
+      title: s.text('Setup guide', 'Návod k propojení'),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(

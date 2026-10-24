@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'controls.dart';
 import 'strings.dart';
 
 class PrivacyPage extends StatelessWidget {
@@ -26,8 +27,8 @@ class PrivacyPage extends StatelessWidget {
       (
         s.text('Communication and permissions', 'Komunikace a oprávnění'),
         s.text(
-          'Wake sends a timestamp, random nonce and HMAC signature to your paired Waker. The Waker broadcasts the target MAC on your LAN. Pairing links and QR codes transfer the Waker address, name and secret to devices you choose. Tailscale is a separate app and service that encrypts remote transport under its own privacy policy; Selia Wake does not receive its account credentials. Network/Wi-Fi permissions enable the relay, camera permission enables explicit QR scanning, and notifications plus a wake lock support the visible Android Waker service. A bounded in-memory replay cache rejects nonce reuse for 60 seconds; expired entries are pruned when processing new requests. Android app backup is disabled.',
-          'Probudit odešle čas, náhodný nonce a podpis HMAC spárovanému budiči. Budič vyšle cílovou MAC do místní sítě. Párovací odkaz a QR kód předají adresu, název a tajný klíč budiče vámi zvolenému zařízení. Tailscale je samostatná aplikace a služba, která šifruje vzdálený přenos podle vlastních zásad soukromí; Selia Wake nedostává její přihlašovací údaje. Síťová a Wi-Fi oprávnění umožňují provoz budiče, kamera slouží k výslovně spuštěnému skenování QR a oznámení se zámkem bdění podporují viditelnou službu budiče na Androidu. Omezená paměť ochrany proti opakování odmítá opakovaný nonce po dobu 60 sekund; prošlé položky se odstraní při zpracování dalších požadavků. Zálohování dat aplikace na Androidu je vypnuté.',
+          'Wake sends a timestamp, random nonce and HMAC signature to your paired Waker. The Waker broadcasts the target MAC on your LAN. Pairing links and QR codes transfer the Waker address, name and secret to devices you choose. Tailscale is a separate app and service that encrypts remote transport under its own privacy policy; Selia Wake does not receive its account credentials. Network/Wi-Fi permissions enable the relay, camera permission enables explicit QR scanning, and notifications plus a wake lock support the visible Android Waker service. A bounded in-memory replay cache rejects nonce reuse for at least 60 seconds and through the request timestamp\'s final accepted second. Expired entries are pruned when processing new requests. Android app backup is disabled.',
+          'Probudit odešle čas, náhodný nonce a podpis HMAC spárovanému budiči. Budič vyšle cílovou MAC do místní sítě. Párovací odkaz a QR kód předají adresu, název a tajný klíč budiče vámi zvolenému zařízení. Tailscale je samostatná aplikace a služba, která šifruje vzdálený přenos podle vlastních zásad soukromí; Selia Wake nedostává její přihlašovací údaje. Síťová a Wi-Fi oprávnění umožňují provoz budiče, kamera slouží k výslovně spuštěnému skenování QR a oznámení se zámkem bdění podporují viditelnou službu budiče na Androidu. Omezená paměť ochrany proti opakování odmítá opakovaný nonce alespoň 60 sekund a až do konce časové platnosti požadavku. Prošlé položky se odstraní při zpracování dalších požadavků. Zálohování dat aplikace na Androidu je vypnuté.',
         ),
       ),
       (
@@ -38,6 +39,13 @@ class PrivacyPage extends StatelessWidget {
         ),
       ),
       (
+        s.text('CLI and companion devices', 'CLI a doprovodná zařízení'),
+        s.text(
+          'The separate CLI stores configuration and pairing keys in a plaintext local file with owner-only file permissions or Windows access rules. It does not use the GUI secure store. Protect backups and synced copies. ESP32 firmware stores Wi-Fi credentials and the pairing key in its nonvolatile memory, without a promise of encrypted flash. Remove configuration before transferring a device. See the full website policy for these separate installations.',
+          'Samostatné CLI ukládá nastavení a párovací klíče nešifrovaně do místního souboru chráněného oprávněními vlastníka nebo přístupovými pravidly Windows. Nepoužívá zabezpečené úložiště grafické aplikace. Chraňte zálohy a synchronizované kopie. Firmware ESP32 ukládá přístupové údaje Wi-Fi a párovací klíč do trvalé paměti, bez záruky šifrování flash. Před předáním zařízení odstraňte nastavení. Tyto samostatné instalace popisují úplné zásady na webu.',
+        ),
+      ),
+      (
         s.text('Website and further information', 'Web a další informace'),
         s.text(
           'The website has no app-added cookies, analytics or external fonts. GitHub Pages logs visitors’ IP addresses for security under GitHub’s privacy statement. Opening external services is subject to their policies. Full website policy and support:\nhttps://majkey25.github.io/selia-wake/privacy.html\nhttps://majkey25.github.io/selia-wake/support.html\nhttps://tailscale.com/privacy-policy',
@@ -45,10 +53,8 @@ class PrivacyPage extends StatelessWidget {
         ),
       ),
     ];
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(s.text('Privacy & support', 'Soukromí a podpora')),
-      ),
+    return WakeScaffold(
+      title: s.text('Privacy & support', 'Soukromí a podpora'),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(

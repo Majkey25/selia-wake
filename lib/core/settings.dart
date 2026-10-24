@@ -7,15 +7,95 @@ import 'protocol.dart';
 
 enum DeviceRole { user, waker }
 
-enum WakeTheme { terminal, material, matrix }
+enum WakeTheme { platform, terminal, material, matrix, custom }
 
 enum TargetConnection { ethernet, wifi, usbEthernet }
+
+class CustomTheme {
+  CustomTheme({
+    this.accent = 0xFF3584E4,
+    this.background = 0xFF202020,
+    this.surface = 0xFF303030,
+    this.foreground = 0xFFF6F5F4,
+    this.muted = 0xFFCCCCCC,
+    this.outline = 0xFF888888,
+    this.error = 0xFFFF8080,
+    this.fontFamily = 'IBM Plex Mono',
+    this.fontSize = 14,
+    this.radius = 6,
+    this.borderWidth = 1,
+  });
+
+  int accent;
+  int background;
+  int surface;
+  int foreground;
+  int muted;
+  int outline;
+  int error;
+  String fontFamily;
+  double fontSize;
+  double radius;
+  double borderWidth;
+
+  factory CustomTheme.fromJson(Object? value) {
+    final data = value is Map<String, Object?> ? value : <String, Object?>{};
+    final defaults = CustomTheme();
+    int color(String key, int fallback) {
+      final value = data[key];
+      return value is int && value >= 0xFF000000 && value <= 0xFFFFFFFF
+          ? value
+          : fallback;
+    }
+
+    double number(String key, double fallback, double min, double max) {
+      final value = data[key];
+      return value is num && value.isFinite && value >= min && value <= max
+          ? value.toDouble()
+          : fallback;
+    }
+
+    final font = data['fontFamily'];
+    return CustomTheme(
+      accent: color('accent', defaults.accent),
+      background: color('background', defaults.background),
+      surface: color('surface', defaults.surface),
+      foreground: color('foreground', defaults.foreground),
+      muted: color('muted', defaults.muted),
+      outline: color('outline', defaults.outline),
+      error: color('error', defaults.error),
+      fontFamily: font is String && font.trim().isNotEmpty && font.length <= 80
+          ? font.trim()
+          : defaults.fontFamily,
+      fontSize: number('fontSize', defaults.fontSize, 11, 24),
+      radius: number('radius', defaults.radius, 0, 32),
+      borderWidth: number('borderWidth', defaults.borderWidth, .5, 3),
+    );
+  }
+
+  CustomTheme copy() => CustomTheme.fromJson(toJson());
+
+  Map<String, Object?> toJson() => {
+    'accent': accent,
+    'background': background,
+    'surface': surface,
+    'foreground': foreground,
+    'muted': muted,
+    'outline': outline,
+    'error': error,
+    'fontFamily': fontFamily,
+    'fontSize': fontSize,
+    'radius': radius,
+    'borderWidth': borderWidth,
+  };
+}
 
 class Settings {
   Settings({
     this.role = DeviceRole.user,
     this.connection = TargetConnection.ethernet,
-    this.theme = WakeTheme.terminal,
+    this.theme = WakeTheme.platform,
+    CustomTheme? customTheme,
     this.appearance = ThemeMode.system,
     this.language = 'system',
     this.targetName = '',
@@ -25,10 +105,11 @@ class Settings {
     this.wakerHost = '',
     required this.wakerKey,
     this.pairing,
-  });
+  }) : customTheme = customTheme ?? CustomTheme();
   DeviceRole role;
   TargetConnection connection;
   WakeTheme theme;
+  CustomTheme customTheme;
   ThemeMode appearance;
   String language;
   String targetName;
@@ -43,6 +124,7 @@ class Settings {
     role: role,
     connection: connection,
     theme: theme,
+    customTheme: customTheme.copy(),
     appearance: appearance,
     language: language,
     targetName: targetName,
@@ -58,6 +140,7 @@ class Settings {
     'role': role.name,
     'connection': connection.name,
     'theme': theme.name,
+    'customTheme': customTheme.toJson(),
     'appearance': appearance.name,
     'language': language,
     'targetName': targetName,
@@ -105,7 +188,10 @@ class SettingsStore {
           WakeTheme.values
               .where((v) => v.name == string('theme'))
               .firstOrNull ??
-          WakeTheme.terminal,
+          (string('theme') == 'glass'
+              ? WakeTheme.terminal
+              : WakeTheme.platform),
+      customTheme: CustomTheme.fromJson(data['customTheme']),
       appearance:
           ThemeMode.values
               .where((v) => v.name == string('appearance'))

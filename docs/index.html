@@ -1,59 +1,52 @@
 <!doctype html>
-<html lang="cs">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Selia Wake: jednoduché probouzení PC přes vlastní zařízení a Tailscale. Android, Windows, Linux. Návod pro Ethernet i Wi-Fi / WoWLAN.">
-  <title>Selia Wake | probuzení PC přes Tailscale</title>
+  <meta name="description" content="Wake your computer through your own Tailscale devices. Selia Wake for Android, Windows, Linux and the terminal, including Raspberry Pi.">
+  <title>Selia Wake | one action to wake your PC</title>
   <link rel="canonical" href="https://majkey25.github.io/selia-wake/">
   <link rel="stylesheet" href="site.css">
 </head>
 <body>
-  <a class="skip" href="#main">Přeskočit na obsah</a>
-  <header>
-    <a class="brand" href="index.html"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v10M6.3 5.5a9 9 0 1 0 11.4 0"/></svg>Selia Wake</a>
-    <nav aria-label="Hlavní navigace"><a href="setup.html">Návod</a><a href="privacy.html" lang="en">Privacy policy</a><a href="support.html">Podpora</a></nav>
-  </header>
+  <a class="skip" href="#main">Skip to content</a>
+  <header><a class="brand" href="index.html"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v10M6.3 5.5a9 9 0 1 0 11.4 0"/></svg>Selia Wake</a><nav aria-label="Main navigation"><a href="setup.html">Setup</a><a href="terminal.html">Terminal &amp; devices</a><a href="privacy.html">Privacy</a><a href="support.html">Support</a></nav></header>
   <main id="main">
-    <h1>Probuďte počítač. Odkudkoli.</h1>
-    <p class="intro">Jedno tlačítko pro váš PC. Doma necháte zapnutý budič, připojíte svá zařízení přes Tailscale a na vzdáleném zařízení stisknete Probudit.</p>
-    <div class="actions"><a class="button" href="https://github.com/Majkey25/selia-wake/releases">Stáhnout aplikaci</a><a class="button secondary" href="setup.html">Jak zařízení propojit</a></div>
-    <p class="meta">Android 8.0+ | Windows x64 | Linux x64. Zdarma, bez reklam a předplatného. Rozhraní česky a anglicky.</p>
-    <section aria-labelledby="roles">
-      <h2 id="roles">Dvě role. Stejná aplikace.</h2>
-      <div class="roles">
-        <div><h3>Budič / The Waker</h3><p>Telefon nebo počítač, který zůstane doma zapnutý ve stejné místní síti jako cílový PC. Přijme podepsaný požadavek a vyšle probouzecí paket.</p></div>
-        <div><h3>Uživatel / User</h3><p>Zařízení, které máte u sebe. Na Androidu načtete QR kód budiče; na počítači vložíte párovací odkaz. Uložíte nastavení a probouzíte jedním tlačítkem.</p></div>
-      </div>
-      <p class="notice">Spící počítač nemůže být vlastním budičem. Aplikace nemusí běžet na cílovém PC, ale jeho síťový adaptér a firmware musí probouzení podporovat.</p>
-    </section>
-    <section aria-labelledby="connections">
-      <h2 id="connections">Kabel, nebo podporovaná Wi-Fi.</h2>
-      <table><thead><tr><th>Připojení cílového PC</th><th>Co potřebujete</th></tr></thead><tbody>
-        <tr><td>Ethernet</td><td>Připojený síťový kabel a povolené Wake-on-LAN ve firmwaru a ovladači.</td></tr>
-        <tr><td>Wi-Fi / WoWLAN</td><td>Wi-Fi adaptér, firmware a ovladač s podporou probouzení. Ve Windows také oprávnění zařízení probouzet PC.</td></tr>
-        <tr><td>USB Ethernet</td><td>USB síťový adaptér s podporou Wake-on-LAN a napájením během spánku, připojený k LAN.</td></tr>
+    <p class="meta">ANDROID | WINDOWS | LINUX | TERMINAL</p>
+    <h1>Wake your computer.</h1>
+    <p class="intro">Keep one device awake at home. Connect through Tailscale. Press Wake from wherever you are.</p>
+    <div class="actions"><a class="button" href="https://github.com/Majkey25/selia-wake/releases">Download a release</a><a class="button secondary" href="setup.html">Connect your devices</a></div>
+    <p class="meta">No Selia Wake account, ads or subscription. Tailscale is installed separately.</p>
+    <section aria-labelledby="roles"><h2 id="roles">Two roles. Your devices.</h2><div class="roles">
+      <div><h3>The Waker</h3><p>An Android phone, laptop, desktop, or Raspberry Pi that stays awake on the target computer's local network. It receives a signed request and sends the local wake packet.</p></div>
+      <div><h3>User</h3><p>The device you carry. Import the Waker's private pairing link or scan its QR code on Android. Save, then press Wake. The CLI can send the same request.</p></div>
+    </div><p class="notice">The sleeping computer cannot be its own Waker. It does not need Selia Wake installed, but its firmware and connected network adapter must support wake.</p></section>
+    <section aria-labelledby="download"><h2 id="download">Choose your installation</h2>
+      <table><thead><tr><th>Device</th><th>Package</th></tr></thead><tbody>
+        <tr><td>Android</td><td>Signed APK. Google Play is limited to <a href="https://play.google.com/apps/internaltest/4701187673438012050">invited internal testers</a>.</td></tr>
+        <tr><td>Windows x64</td><td>Extract the full desktop ZIP and open <code>seliawake.exe</code>, or use the standalone CLI.</td></tr>
+        <tr><td>Linux x64</td><td>Extract the desktop archive and open <code>seliawake</code>. GTK 3 and an unlocked Secret Service keyring are required. The CLI needs neither.</td></tr>
+        <tr><td>Raspberry Pi / headless Linux</td><td>Standalone CLI for ARM64 or ARMv7. Choose the architecture of the installed OS. <a href="terminal.html">Device guide</a>.</td></tr>
+        <tr><td>ESP32 Arduino boards</td><td>Companion firmware with a separate Tailscale gateway. This is a board-specific installation, not the desktop application.</td></tr>
       </tbody></table>
-      <p>Běžný USB nabíjecí kabel telefonu PC touto aplikací neprobudí. <a href="setup.html#wowlan">Postup bez ethernetového kabelu</a>.</p>
+      <p>Each new release lists the included packages, installation steps and SHA-256 checksums. Older releases keep their original assets. Windows may require Microsoft's Visual C++ runtime for the desktop GUI.</p>
     </section>
-    <section id="download" aria-labelledby="downloads">
-      <h2 id="downloads">Stažení a instalace</h2>
-      <p>Na GitHubu jsou podepsané Android APK a přenosné archivy pro Windows a Linux. U každého vydání najdete kontrolní součty SHA-256. Zvolte nejnovější testovací vydání.</p>
-      <ul>
-        <li><strong>Android:</strong> nainstalujte APK, nebo se jako pozvaný tester zapojte do <a href="https://play.google.com/apps/internaltest/4701187673438012050">interního testování Google Play</a>. Aplikace zatím není veřejně vydaná v produkci Google Play.</li>
-        <li><strong>Windows:</strong> rozbalte celý ZIP a spusťte <code>seliawake.exe</code>. Některé systémy potřebují Microsoft Visual C++ Runtime.</li>
-        <li><strong>Linux:</strong> rozbalte celý archiv a spusťte <code>seliawake</code>. Potřebujete GTK 3 a odemknutou klíčenku Secret Service.</li>
-      </ul>
-      <p>Tailscale se instaluje samostatně z <a href="https://tailscale.com/download">tailscale.com</a>. Budič na počítači běží, dokud je aplikace otevřená. Na Androidu má viditelné oznámení. Po restartu jej spusťte znovu.</p>
+    <section aria-labelledby="connections"><h2 id="connections">Ethernet or supported Wi-Fi.</h2>
+      <table><thead><tr><th>Target connection</th><th>Requirement</th></tr></thead><tbody>
+        <tr><td>Ethernet</td><td>A connected cable and Wake-on-LAN enabled in firmware and the adapter driver.</td></tr>
+        <tr><td>Wi-Fi / WoWLAN</td><td>A wireless adapter, driver and firmware with wake support. Use the Wi-Fi MAC, and allow the adapter to wake Windows.</td></tr>
+        <tr><td>USB Ethernet</td><td>A wake-capable USB network adapter that remains powered in the target sleep state and stays connected to LAN.</td></tr>
+      </tbody></table>
+      <p>A normal phone charging cable does not provide USB remote wake. <a href="setup.html#wowlan">Read the wireless setup steps</a>.</p>
     </section>
-    <section aria-labelledby="faq">
-      <h2 id="faq">Než stisknete Probudit</h2>
-      <details><summary>Jak funguje QR kód a párovací odkaz?</summary><p>Obsahují adresu budiče, jeho název a tajný klíč. Přenášejí stejné údaje. Na druhém zařízení zkontrolujte název a adresu a potvrďte Uložit nastavení. Nejde o webovou pozvánku a párování samo nepřipojí Tailscale. Kód sdílejte jen se svými důvěryhodnými zařízeními.</p></details>
-      <details><summary>Co znamená „Paket odeslán“?</summary><p>Budič odeslal probouzecí paket. Aplikace tím nepotvrzuje, že se PC zapnul. Když se neprobudí, zkontrolujte vybraný adaptér, MAC, firmware, ovladač a izolaci místní sítě.</p></details>
-      <details><summary>Potřebuji otevřít port na routeru?</summary><p>Při spojení přes Tailscale ne. Budič poslouchá na TCP 45879. U desktopového budiče povolte přístup jen zamýšleným zařízením Tailscale. Port nepřesměrovávejte na veřejný internet.</p></details>
-      <details><summary>Odesílá aplikace data vývojáři?</summary><p>Selia Wake nemá server vývojáře, vlastní účty, reklamu ani analytiku. Nastavení a klíče jsou místní. Komunikace probíhá mezi vašimi zařízeními; Tailscale a GitHub mají vlastní zásady zpracování dat. Podrobnosti jsou v <a href="privacy.html" lang="en">privacy policy</a>.</p></details>
+    <section aria-labelledby="faq"><h2 id="faq">Before you press Wake</h2>
+      <details><summary>What does the pairing link share?</summary><p>The Waker's address, name and secret. A QR code contains the same information. Review the name and address, then save. Pairing does not connect Tailscale for you. Share codes only with trusted devices.</p></details>
+      <details><summary>Does “Packet sent” mean the computer started?</summary><p>It confirms the Waker's UDP send operation. The app cannot confirm that the target received the packet or booted. Check its state separately.</p></details>
+      <details><summary>Can I use an old laptop as The Waker?</summary><p>Yes. Keep it powered, awake and connected to the target LAN. Keep the GUI or CLI relay running. Check the laptop's lid-close and sleep settings. No automatic startup is installed.</p></details>
+      <details><summary>Do I open a router port?</summary><p>No. Use Tailscale between your devices. The relay uses TCP 45879 and local UDP 9. Restrict the listener to intended peers with firewall and tailnet rules. Never publish it through router forwarding or Tailscale Funnel.</p></details>
+      <details><summary>Where is my data stored?</summary><p>The GUI uses OS secure storage. The CLI and firmware have their own local storage, described in the <a href="privacy.html">privacy policy</a>. Selia Wake has no developer-operated relay or analytics service.</p></details>
     </section>
   </main>
-  <footer><p>Selia Wake | Majkey / MajkeyLab</p><a href="privacy.html" lang="en">Privacy policy</a><a href="delete-data.html">Odstranění dat</a><a href="support.html">Kontakt</a><a href="https://github.com/Majkey25/selia-wake">Zdrojový kód | MIT</a></footer>
+  <footer><p>Selia Wake | MajkeyLab</p><a href="privacy.html">Privacy policy</a><a href="delete-data.html">Data removal</a><a href="support.html">Contact</a><a href="https://github.com/Majkey25/selia-wake/blob/main/LICENSE">Proprietary license</a></footer>
 </body>
 </html>

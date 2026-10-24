@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Use Selia Wake from a terminal on Windows, Linux or Raspberry Pi. Supported architectures, CLI setup and ESP32 gateway requirements."><title>Terminal and devices | Selia Wake</title><link rel="stylesheet" href="site.css"></head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header><a class="brand" href="index.html">Selia Wake</a><nav aria-label="Main navigation"><a href="setup.html">Setup</a><a href="terminal.html" aria-current="page">Terminal &amp; devices</a><a href="privacy.html">Privacy</a><a href="support.html">Support</a></nav></header>
+  <main id="main" class="policy">
+    <h1>No desktop required.</h1><p>The standalone CLI is one executable. A spare laptop, Linux server or Raspberry Pi can be The Waker. It needs neither Flutter nor GTK. Keep it powered, awake and on the target's LAN.</p>
+    <h2>Pick the right package</h2>
+    <table><thead><tr><th>System</th><th>CLI archive</th></tr></thead><tbody>
+      <tr><td>Windows x64</td><td><code>selia-wake-cli-windows-x64.zip</code></td></tr>
+      <tr><td>Linux x64</td><td><code>selia-wake-cli-linux-x64.tar.gz</code></td></tr>
+      <tr><td>Linux ARM64</td><td><code>selia-wake-cli-linux-arm64.tar.gz</code></td></tr>
+      <tr><td>Linux ARMv7</td><td><code>selia-wake-cli-linux-armv7.tar.gz</code></td></tr>
+    </tbody></table>
+    <p>For Raspberry Pi, match the installed OS architecture, not just the board name. A 64-bit OS needs ARM64. A compatible 32-bit ARMv7 OS needs ARMv7. Pi 1 and first-generation Pi Zero use ARMv6 and cannot use the ARMv7 package. Cross-built ARM packages still need testing on your board.</p>
+    <p>Download from <a href="https://github.com/Majkey25/selia-wake/releases">GitHub Releases</a>, verify the archive against that release's <code>SHA256SUMS</code>, and extract it. Linux example:</p>
+    <pre><code>tar -xzf selia-wake-cli-linux-arm64.tar.gz
+chmod 755 ./seliawake
+./seliawake help</code></pre>
+    <p>Run it from its own folder as your normal user. On Windows, extract the ZIP and use <code>.\seliawake.exe</code>. It does not install a service, change the firewall or create automatic startup.</p>
+    <h2>Configure The Waker</h2><p>Install and connect <a href="https://tailscale.com/download">Tailscale</a> separately. Use the Waker's assigned Tailscale IPv4 and physical LAN IPv4, plus the target's MAC. Replace these examples:</p>
+    <pre><code>./seliawake init-waker --tailnet-ip 100.101.102.103 --lan-ip 192.168.1.20 --mac 02:11:22:33:44:55 --broadcast 192.168.1.255 --name Home
+./seliawake status
+./seliawake send-local
+./seliawake export-pairing --show-secret
+./seliawake serve --allow-tailnet</code></pre>
+    <p>Export reveals a private pairing link. Transfer it only to trusted devices. <code>serve</code> listens on the configured Tailscale IPv4 at TCP 45879 until Ctrl+C. Stop any GUI relay on that device first. Keep this terminal running. Restrict access using tailnet and firewall rules.</p>
+    <h2>Wake from another computer</h2><pre><code>./seliawake pair --stdin</code></pre><p>Paste the secret pairing URI, then end input with Ctrl+D on Linux or Ctrl+Z followed by Enter on Windows. Input can be echoed by your terminal. Do not include the secret in a command argument, shell history or environment variable.</p><pre><code>./seliawake status
+./seliawake wake</code></pre><p>A GUI User can also import a CLI Waker's link. A CLI User can import a GUI Waker's link. “Packet sent” does not confirm target startup. <code>status</code> shows local configuration, not remote availability.</p>
+    <h2>Settings and removal</h2><p>Use <code>--config-dir DIRECTORY</code> before a command to keep separate configurations. Existing files are never overwritten. To change the target, role or key, stop the old relay and create a new configuration directory. Re-pair when the key or address changes. GUI and CLI settings are separate.</p><p>The secret is plaintext in <code>config.json</code>. Linux creates owner-only permissions. Windows uses a protected access list. Keep this file on a trusted local filesystem, outside shared or synced folders. <code>status</code> displays the config directory without the key. Stop the relay and remove that directory yourself to reset it. See the <a href="https://github.com/Majkey25/selia-wake/blob/main/docs/cli.md">complete CLI reference</a>.</p>
+    <h2>ESP32 and other Arduino boards</h2><p>ESP32 companion firmware is a separate experimental port. It uses the Arduino ESP32 core, USB serial configuration and local Wi-Fi. It requires an always-on Tailscale gateway that forwards the tailnet listener to the ESP32. The board does not run Tailscale itself. The signed request format remains the same.</p><p>Read the <a href="https://github.com/Majkey25/selia-wake/blob/main/docs/esp32.md">ESP32 build, configuration and gateway guide</a> before flashing. No ESP32 hardware test is claimed. Classic Arduino Uno boards lack the networking and resources required by this firmware. Other boards need their own implementation; there is no universal installer for every microcontroller.</p>
+    <h2>When wake fails</h2><p>Check the <a href="setup.html">target adapter and firmware setup</a>. Keep The Waker on the same broadcast network as the target. Check its physical LAN source address, current Tailscale connection, automatic clock synchronization, sleep policy and client isolation. The protocol rejects stale requests. If the Waker's LAN address changes, update configuration before restarting it.</p>
+  </main>
+  <footer><a href="index.html">Selia Wake</a><a href="privacy.html">Privacy policy</a><a href="delete-data.html">Data removal</a><a href="support.html">Contact</a></footer>
+</body>
+</html>

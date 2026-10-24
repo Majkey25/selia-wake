@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../core/protocol.dart';
@@ -15,6 +16,18 @@ class Strings {
 
   String text(String english, String czech) => this.czech ? czech : english;
   String get settings => text('Settings', 'Nastavení');
+  String get platformTheme => switch (defaultTargetPlatform) {
+    TargetPlatform.windows => text('Platform (Fluent)', 'Platforma (Fluent)'),
+    TargetPlatform.linux => text(
+      'Platform (GTK style)',
+      'Platforma (styl GTK)',
+    ),
+    _ => text('Platform (Material You)', 'Platforma (Material You)'),
+  };
+  String get platformStyleHelp => text(
+    'Choose a preset, or make your own with Custom. Save settings to apply the theme.',
+    'Vyberte hotový motiv, nebo si ve volbě Vlastní sestavte vlastní vzhled. Motiv použijete tlačítkem Uložit nastavení.',
+  );
   String get retry => text('Retry', 'Zkusit znovu');
   String get user => text('User', 'Uživatel');
   String get waker => text('The Waker', 'Budič');

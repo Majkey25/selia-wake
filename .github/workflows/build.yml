@@ -20,6 +20,22 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
+  android:
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v5.0.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2.23.0
+        with:
+          flutter-version: '3.47.8'
+          cache: true
+      - run: flutter pub get
+      - run: ./gradlew :app:testDebugUnitTest
+        working-directory: android
   desktop:
     needs: verify
     strategy:
@@ -42,6 +58,11 @@ jobs:
       - run: flutter pub get
       - run: flutter build ${{ matrix.platform }} --release
       - if: matrix.platform == 'windows'
+        shell: bash
+        run: cp LICENSE HISTORICAL_MIT_RELEASES.md THIRD_PARTY_NOTICES.md build/windows/x64/runner/Release/
+      - if: matrix.platform == 'linux'
+        run: cp LICENSE HISTORICAL_MIT_RELEASES.md THIRD_PARTY_NOTICES.md build/linux/x64/release/bundle/
+      - if: matrix.platform == 'windows'
         shell: pwsh
         run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath selia-wake-windows-x64.zip
       - if: matrix.platform == 'linux'
@@ -51,3 +72,70 @@ jobs:
           name: selia-wake-${{ matrix.platform }}-x64
           path: selia-wake-${{ matrix.platform }}-x64.*
           if-no-files-found: error
+  cli:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: '1.27.3'
+          cache: false
+      - run: go test ./...
+      - run: go vet ./...
+      - if: runner.os == 'Linux'
+        run: go test -race ./...
+      - if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for target in amd64 arm64 arm; do
+            case "$target" in
+              amd64) label=x64 ;;
+              arm64) label=arm64 ;;
+              arm) label=armv7 ;;
+            esac
+            mkdir -p "dist/$label"
+            CGO_ENABLED=0 GOOS=linux GOARCH="$target" GOARM=7 go build -trimpath -ldflags='-s -w' -o "dist/$label/seliawake" .
+            cp ../LICENSE ../HISTORICAL_MIT_RELEASES.md ../THIRD_PARTY_NOTICES.md ../docs/cli.md "dist/$label/"
+            cp "$(go env GOROOT)/LICENSE" "dist/$label/GO-LICENSE"
+            cp "$(go env GOROOT)/PATENTS" "dist/$label/GO-PATENTS"
+            tar -czf "selia-wake-cli-linux-$label.tar.gz" -C "dist/$label" .
+          done
+      - if: runner.os == 'Windows'
+        run: go build -trimpath -ldflags="-s -w" -o dist/seliawake.exe .
+        env:
+          CGO_ENABLED: '0'
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Copy-Item ../LICENSE, ../HISTORICAL_MIT_RELEASES.md, ../THIRD_PARTY_NOTICES.md, ../docs/cli.md -Destination dist
+          $goInstallRoot = go env GOROOT
+          Copy-Item -LiteralPath (Join-Path $goInstallRoot 'LICENSE') -Destination dist/GO-LICENSE
+          Copy-Item -LiteralPath (Join-Path $goInstallRoot 'PATENTS') -Destination dist/GO-PATENTS
+          Compress-Archive -Path dist/* -DestinationPath selia-wake-cli-windows-x64.zip
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: selia-wake-cli-${{ runner.os }}
+          path: cli/selia-wake-cli-*.*
+          if-no-files-found: error
+  firmware:
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: arduino/setup-arduino-cli@v2.0.0
+        with:
+          version: '1.5.1'
+      - run: c++ -std=c++17 -Wall -Wextra -Werror firmware/tests/protocol_test.cpp -o /tmp/seliawake-protocol-test
+      - run: /tmp/seliawake-protocol-test
+      - run: arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+      - run: arduino-cli core install esp32:esp32@3.3.12 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+      - run: arduino-cli compile --fqbn esp32:esp32:esp32 firmware/esp32

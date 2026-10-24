@@ -2,7 +2,7 @@
 
 TCP port 45879. HTTP POST /v1/wake, Content-Type application/json. Body at most 1024 bytes. Fields: timestamp (integer Unix seconds), nonce (base64url without padding, 16 random bytes), signature (64 lowercase hexadecimal characters).
 
-Secret: 32 random bytes, represented as unpadded base64url. Signature: HMAC-SHA256 with decoded secret, over UTF-8 of timestamp + newline + nonce + newline + wake-v1. Reject timestamps outside 30 seconds, nonce reuse for 60 seconds, incorrect signatures, incorrect shapes, oversized requests, invalid routes, and excess attempts. Replay store at most 128 entries. Constant-time comparison. Never log pairing secrets or signatures.
+Secret: 32 random bytes, represented as unpadded base64url. Signature: HMAC-SHA256 with decoded secret, over UTF-8 of timestamp + newline + nonce + newline + wake-v1. Reject timestamps outside the inclusive 30-second window, incorrect signatures, incorrect shapes, oversized requests, invalid routes, and excess attempts. Retain each nonce for at least 60 seconds and through its timestamp's final accepted second: expiry is max(acceptedAt + 60, timestamp + 31). Replay store at most 128 entries. Constant-time comparison. Never log pairing secrets or signatures.
 
 Only authenticated, fresh, non-replayed requests consume the shared wake quota: 30 per 60 seconds on Android, 60 per 60 seconds on desktop. Connection, body, timeout, and replay-store bounds apply separately.
 

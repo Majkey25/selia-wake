@@ -113,6 +113,21 @@ void main() {
     auth.authorize(request(timestamp: now + 122), now + 122);
   });
 
+  test('replay is rejected through the final accepted timestamp second', () {
+    final auth = WakeAuthorizer(key);
+    final body = request(timestamp: now + 30);
+    auth.authorize(body, now);
+    expect(
+      () => auth.authorize(body, now + 60),
+      throwsA(isA<ProtocolFailure>().having((e) => e.code, 'code', 'replay')),
+    );
+    expect(
+      () => auth.authorize(body, now + 61),
+      throwsA(isA<ProtocolFailure>().having((e) => e.code, 'code', 'expired')),
+    );
+    auth.authorize(request(timestamp: now + 61), now + 61);
+  });
+
   test('unauthenticated traffic and replays cannot exhaust the wake quota', () {
     final auth = WakeAuthorizer(key);
     auth.authorize(request(), now);

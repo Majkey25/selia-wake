@@ -119,7 +119,7 @@ class WakeAuthorizer {
     }
     if (_attempts >= 60) throw const ProtocolFailure('rate_limited', 429);
     _attempts++;
-    _nonces[nonce] = now + 60;
+    _nonces[nonce] = max(now + 60, timestamp + 31);
   }
 }
 

@@ -1,7 +1,7 @@
 name: seliawake
 description: One-tap Wake-on-LAN through your own Tailscale devices.
 publish_to: none
-version: 0.1.2+4
+version: 0.2.0+3006
 environment:
   sdk: '>=3.10.0 <4.0.0'
 dependencies:
@@ -11,6 +11,7 @@ dependencies:
     sdk: flutter
   crypto: ^3.0.6
   dynamic_color: ^1.8.1
+  fluent_ui: ^4.17.0
   flutter_secure_storage: ^10.0.0
   qr_flutter: 4.1.0
 dev_dependencies:

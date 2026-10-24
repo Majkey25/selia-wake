@@ -142,13 +142,17 @@ internal object RelayHttp {
     }
 }
 
-internal class RelayGuard(private val secret: ByteArray) {
+internal class RelayGuard(
+    private val secret: ByteArray,
+    private val elapsedRealtime: () -> Long = SystemClock::elapsedRealtime,
+    private val unixSeconds: () -> Long = { System.currentTimeMillis() / 1000 },
+) {
     private val nonces = LinkedHashMap<String, Long>()
-    private var windowStart = SystemClock.elapsedRealtime()
+    private var windowStart = elapsedRealtime()
     private var attempts = 0
 
     private fun admit() {
-        val now = SystemClock.elapsedRealtime()
+        val now = elapsedRealtime()
         if (now - windowStart >= 60_000) {
             windowStart = now
             attempts = 0
@@ -158,7 +162,7 @@ internal class RelayGuard(private val secret: ByteArray) {
     }
 
     fun authorize(request: WakeRequest) {
-        val nowSeconds = System.currentTimeMillis() / 1000
+        val nowSeconds = unixSeconds()
         if (request.timestamp < nowSeconds - 30 || request.timestamp > nowSeconds + 30) {
             throw RelayFailure("expired")
         }
@@ -166,14 +170,14 @@ internal class RelayGuard(private val secret: ByteArray) {
         mac.init(SecretKeySpec(secret, "HmacSHA256"))
         val expected = mac.doFinal("${request.timestamp}\n${request.nonce}\nwake-v1".toByteArray(Charsets.UTF_8))
         if (!MessageDigest.isEqual(expected, request.signature)) throw RelayFailure("unauthorized")
-        val now = SystemClock.elapsedRealtime()
+        val now = elapsedRealtime()
         val iterator = nonces.entries.iterator()
         while (iterator.hasNext()) {
-            if (now - iterator.next().value >= 60_000) iterator.remove()
+            if (iterator.next().value <= now) iterator.remove()
         }
         if (request.nonce in nonces) throw RelayFailure("replay")
         if (nonces.size >= 128) throw RelayFailure("rate_limited")
         admit()
-        nonces[request.nonce] = now
+        nonces[request.nonce] = now + maxOf(60_000L, (request.timestamp - nowSeconds + 31) * 1_000)
     }
 }
