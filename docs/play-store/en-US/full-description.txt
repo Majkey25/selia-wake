@@ -1,0 +1,33 @@
+Wake a compatible computer with one button, using your own devices and Tailscale.
+
+HOW IT WORKS
+Keep a phone or computer awake at home on the same local network as the PC you want to wake. Select The Waker on that device. On the device you carry, select User and pair with the Waker. Then press Wake.
+
+The sleeping PC cannot be its own Waker. Selia Wake does not need to run on the sleeping PC.
+
+FEATURES
+• One-button wake after setup.
+• QR pairing on Android, with pairing-link paste as an alternative.
+• The same app supports User and Waker roles.
+• Companion builds for Windows and Linux.
+• A built-in setup guide and connection requirements.
+• Terminal, Material You and Matrix themes.
+• System, light and dark appearance for Terminal and Material You.
+• English and Czech interface.
+• Settings and pairing keys stored in operating-system secure storage.
+• No Selia Wake account, ads, subscriptions or developer-operated relay server.
+
+WHAT YOU NEED
+Install Tailscale separately on the User and Waker devices, sign in to your own tailnet, and allow those devices to communicate. Tailscale is a separate service with its own account and terms.
+
+Keep the Waker powered, awake and connected. The target PC needs Wake-on-LAN support enabled in its firmware and network adapter. Ethernet is supported. Wi-Fi requires compatible WoWLAN hardware, firmware and drivers. USB Ethernet requires an adapter that supports wake and stays powered during sleep. A regular phone charging cable cannot provide this wake signal.
+
+On Android, the active Waker shows an ongoing notification with a Stop action. Device battery restrictions can interrupt it. The Waker does not start automatically after a reboot. Desktop operation lasts while the application is open.
+
+IMPORTANT LIMITS
+“Packet sent” confirms transmission, not that the computer started. Wake from shutdown depends on the target hardware. Check the built-in guide before relying on unattended access.
+
+Pairing links and QR codes contain a secret. Share them only with trusted devices.
+
+Support: majkeylab@gmail.com
+Privacy policy: https://majkey25.github.io/selia-wake/privacy.html

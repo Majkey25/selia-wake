@@ -1,0 +1,33 @@
+Probuďte kompatibilní počítač jedním tlačítkem přes vlastní zařízení a Tailscale.
+
+JAK TO FUNGUJE
+Nechte doma zapnutý telefon nebo počítač ve stejné místní síti jako cílový PC. Na tomto zařízení vyberte roli Budič. Na zařízení, které máte u sebe, vyberte Uživatel a spárujte ho s budičem. Potom stiskněte Probudit.
+
+Spící PC nemůže být vlastním budičem. Selia Wake na spícím PC nemusí běžet.
+
+FUNKCE
+• Po nastavení probouzení jedním tlačítkem.
+• Párování QR kódem na Androidu nebo vložením párovacího odkazu.
+• Jedna aplikace pro roli uživatele i budiče.
+• Doprovodné verze pro Windows a Linux.
+• Vestavěný návod a požadavky na připojení.
+• Témata Terminal, Material You a Matrix.
+• Systémový, světlý a tmavý režim témat Terminal a Material You.
+• České a anglické rozhraní.
+• Nastavení a párovací klíče v zabezpečeném úložišti operačního systému.
+• Bez účtu Selia Wake, reklam, předplatného a serveru vývojáře pro předávání požadavků.
+
+CO POTŘEBUJETE
+Na zařízení uživatele i budiče samostatně nainstalujte Tailscale, přihlaste je do své sítě tailnet a povolte jejich vzájemnou komunikaci. Tailscale je samostatná služba s vlastním účtem a podmínkami.
+
+Budič musí zůstat napájený, zapnutý a připojený. Cílový PC potřebuje podporu Wake-on-LAN povolenou ve firmwaru a síťovém adaptéru. Aplikace podporuje Ethernet. Wi-Fi vyžaduje kompatibilní hardware, firmware a ovladače s podporou WoWLAN. USB Ethernet potřebuje adaptér s podporou probouzení a napájením během spánku. Běžný nabíjecí kabel telefonu tento signál neposílá.
+
+Aktivní budič na Androidu zobrazuje trvalé oznámení s tlačítkem Zastavit. Úsporná opatření zařízení mohou jeho provoz přerušit. Po restartu se budič automaticky nespouští. Na počítači běží, dokud je aplikace otevřená.
+
+DŮLEŽITÁ OMEZENÍ
+„Paket odeslán“ potvrzuje přenos, ne zapnutí počítače. Probuzení z vypnutého stavu závisí na hardwaru. Než se spolehnete na vzdálený přístup bez obsluhy, projděte vestavěný návod.
+
+Párovací odkazy a QR kódy obsahují tajný klíč. Sdílejte je jen s důvěryhodnými zařízeními.
+
+Podpora: majkeylab@gmail.com
+Zásady ochrany soukromí: https://majkey25.github.io/selia-wake/privacy.html
