@@ -28,3 +28,12 @@ Google Play internal-track availability must be checked in Play Console separate
 - A further signed request produced the correct 102-byte packet while Selia Wake was in the background and the phone screen was off. This remains a spot check.
 - The target PC's Ethernet adapter was disconnected, while its configured MAC belonged to that Ethernet adapter. Windows listed that Ethernet device as wake-armed, but not the active Wi-Fi adapter. The disconnected target link prevents this Ethernet wake path. BIOS configuration and actual wake after reconnecting Ethernet remain unverified. A phone charging cable does not substitute for that connection.
 - Two bounded independent source-review rounds found and then verified the quota fix. The final review found no remaining confirmed P1/P2 within its scope; it did not independently execute builds or device tests.
+
+## 24 October 2026, version 0.1.2
+
+* The Windows Wi-Fi wake-enable command was run through UAC. A fresh `powercfg /devicequery wake_armed` includes the MediaTek MT7922. This confirms Windows configuration, not a successful hardware wake.
+* Added the Windows WoWLAN setup and diagnostic commands to the offline English/Czech app guide. The physical Android release opened the guide and exposed the commands. Settings also opened the new offline Privacy & support page with the expected text.
+* Dart analysis, formatting, nine local tests, signed Android APK/AAB builds, bundle validation, APK signature verification and 16 KB zip alignment passed.
+* GitHub Actions run 40072210858 passed verification and built Windows and Linux from commit 766b00bbe05d2ede9feef444e928b635aa0d55a5. Subsequent website-only copy edits do not change application source.
+* All five public HTML pages returned HTTP 200, as did the shared CSS. The website was checked in a real browser at desktop and 360 px mobile width, including navigation, the WoWLAN commands, contact and removal pages. Mobile pages had no horizontal document overflow. Privacy policy URL in Play Console matches the public page.
+* Physical PC sleep/wake, Linux GUI runtime and full desktop GUI flows remain unverified. The website and internal releases do not establish production Google Play approval; additional Play Console declarations remain separate.
