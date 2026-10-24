@@ -43,6 +43,9 @@ class Relay {
   final _requests = <HttpRequest>{};
   bool get _android => Platform.isAndroid;
 
+  Future<String?> scanPairing(String language) =>
+      _channel.invokeMethod<String>('scanPairing', {'language': language});
+
   Future<NetworkInfo> networkInfo() async {
     if (_android) {
       final data = await _channel.invokeMapMethod<String, Object?>(

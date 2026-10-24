@@ -59,25 +59,17 @@ class _SeliaWakeAppState extends State<SeliaWakeApp> {
         title: 'Selia Wake',
         debugShowCheckedModeBanner: false,
         theme: wakeTheme(
-          settings?.theme ?? WakeTheme.material,
+          settings?.theme ?? WakeTheme.terminal,
           Brightness.light,
           light,
         ),
         darkTheme: wakeTheme(
-          settings?.theme ?? WakeTheme.material,
+          settings?.theme ?? WakeTheme.terminal,
           Brightness.dark,
           dark,
         ),
         themeMode: settings?.appearance ?? ThemeMode.system,
-        themeAnimationDuration:
-            settings?.motion == false ||
-                WidgetsBinding
-                    .instance
-                    .platformDispatcher
-                    .accessibilityFeatures
-                    .disableAnimations
-            ? Duration.zero
-            : const Duration(milliseconds: 180),
+        themeAnimationDuration: Duration.zero,
         locale: settings == null || settings.language == 'system'
             ? null
             : Locale(settings.language),

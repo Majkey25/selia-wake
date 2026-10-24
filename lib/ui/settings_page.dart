@@ -2,11 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../core/protocol.dart';
 import '../core/relay.dart';
 import '../core/settings.dart';
 import 'strings.dart';
+import 'setup_guide.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -14,12 +16,10 @@ class SettingsPage extends StatefulWidget {
     required this.initial,
     required this.relay,
     required this.save,
-    this.role,
   });
   final Settings initial;
   final Relay relay;
   final Future<void> Function(Settings) save;
-  final DeviceRole? role;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -34,8 +34,10 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _lan;
   late final TextEditingController _host;
   final _pairing = TextEditingController();
+  Pairing? _pendingPairing;
   bool _saving = false;
   bool _detecting = false;
+  bool _scanning = false;
   String? _error;
   String? _networkNote;
 
@@ -43,7 +45,6 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _draft = widget.initial.copy();
-    _draft.role = widget.role ?? _draft.role;
     _name = TextEditingController(text: _draft.targetName);
     _mac = TextEditingController(text: _draft.mac);
     _broadcast = TextEditingController(text: _draft.broadcast);
@@ -106,17 +107,42 @@ class _SettingsPageState extends State<SettingsPage> {
         );
         return;
       }
-      _pairing.text = text;
-      setState(() => _error = null);
-    } catch (_) {
+      final pairing = Pairing.parse(text);
+      _pairing.text = pairing.encode();
+      setState(() {
+        _pendingPairing = pairing;
+        _error = null;
+      });
+    } catch (error) {
       if (mounted) {
         setState(
-          () => _error = s.text(
-            'Clipboard unavailable. Enter the pairing link manually.',
-            'Schránka není dostupná. Zadejte párovací odkaz ručně.',
-          ),
+          () => _error = error is FormatException
+              ? s.failure(error)
+              : s.text(
+                  'Clipboard unavailable. Enter the pairing link manually.',
+                  'Schránka není dostupná. Zadejte párovací odkaz ručně.',
+                ),
         );
       }
+    }
+  }
+
+  Future<void> _scan() async {
+    final s = Strings.of(context);
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    try {
+      final code = await widget.relay.scanPairing(s.czech ? 'cs' : 'en');
+      if (!mounted || code == null) return;
+      final pairing = Pairing.parse(code);
+      _pairing.text = pairing.encode();
+      setState(() => _pendingPairing = pairing);
+    } catch (error) {
+      if (mounted) setState(() => _error = s.failure(error));
+    } finally {
+      if (mounted) setState(() => _scanning = false);
     }
   }
 
@@ -145,6 +171,7 @@ class _SettingsPageState extends State<SettingsPage> {
       await widget.save(_draft.copy());
       if (!mounted) return false;
       _pairing.clear();
+      _pendingPairing = null;
       if (close) Navigator.of(context).pop();
       return true;
     } catch (_) {
@@ -215,43 +242,74 @@ class _SettingsPageState extends State<SettingsPage> {
     final scheme = Theme.of(context).colorScheme;
     final isWaker = _draft.role == DeviceRole.waker;
     return PopScope(
-      canPop: !_saving,
+      canPop: !_saving && !_scanning,
       child: Scaffold(
-        appBar: AppBar(title: Text(s.settings)),
+        appBar: AppBar(
+          title: Text(s.settings),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(),
+          ),
+        ),
         body: SafeArea(
           top: false,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
+              constraints: const BoxConstraints(maxWidth: 440),
               child: Form(
                 key: _form,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
                   children: [
-                    _section(s.text('This device', 'Toto zařízení')),
-                    _choices<DeviceRole>(
+                    _select<DeviceRole>(
+                      s.text('Mode', 'Režim'),
                       DeviceRole.values,
                       _draft.role,
                       (role) => role == DeviceRole.waker ? s.waker : s.user,
                       (role) => setState(() => _draft.role = role),
-                      (role) => role == DeviceRole.waker
-                          ? Icons.router_outlined
-                          : Icons.touch_app_outlined,
                     ),
                     const SizedBox(height: 12),
                     Text(
                       isWaker
                           ? s.localHelp
                           : s.text(
-                              'Import a link from your awake Waker, then press Wake. Both devices must be connected to Tailscale.',
-                              'Načtěte odkaz ze zapnutého budiče a stiskněte Probudit. Obě zařízení musí být připojena k Tailscale.',
+                              'Paste a pairing link from your Waker. Connect Tailscale on both devices.',
+                              'Vložte párovací odkaz z budiče. Připojte Tailscale na obou zařízeních.',
                             ),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 24),
                     if (isWaker) ...[
+                      _select<TargetConnection>(
+                        s.text('Computer connection', 'Připojení počítače'),
+                        TargetConnection.values,
+                        _draft.connection,
+                        (connection) => switch (connection) {
+                          TargetConnection.ethernet => 'Ethernet',
+                          TargetConnection.wifi => 'Wi-Fi (WoWLAN)',
+                          TargetConnection.usbEthernet => 'USB Ethernet',
+                        },
+                        (connection) =>
+                            setState(() => _draft.connection = connection),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(switch (_draft.connection) {
+                        TargetConnection.ethernet => s.text(
+                          'Connect the computer to the router by Ethernet. Enter the Ethernet adapter’s MAC below.',
+                          'Připojte počítač Ethernetem k routeru. Níže zadejte MAC ethernetového adaptéru.',
+                        ),
+                        TargetConnection.wifi => s.text(
+                          'Requires Wake on Wireless LAN support in the computer, firmware, and driver. Enter the Wi-Fi adapter’s MAC. A Wi-Fi connection alone is not enough.',
+                          'Počítač, firmware a ovladač musí podporovat Wake on Wireless LAN. Zadejte MAC Wi-Fi adaptéru. Samotné připojení k Wi-Fi nestačí.',
+                        ),
+                        TargetConnection.usbEthernet => s.text(
+                          'Requires a powered USB Ethernet adapter with Wake-on-LAN support and an Ethernet cable. A phone charging cable cannot send this wake signal.',
+                          'Vyžaduje napájený USB Ethernet adaptér s podporou Wake-on-LAN a ethernetový kabel. Nabíjecí kabel telefonu tento probouzecí signál neposílá.',
+                        ),
+                      }, style: Theme.of(context).textTheme.bodySmall),
+                      const SizedBox(height: 20),
                       _field(
                         _name,
                         s.name,
@@ -355,7 +413,11 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                             onPressed: _saving
                                 ? null
-                                : () => setState(() => _draft.pairing = null),
+                                : () => setState(() {
+                                    _draft.pairing = null;
+                                    _pendingPairing = null;
+                                    _pairing.clear();
+                                  }),
                             icon: const Icon(Icons.link_off_rounded),
                           ),
                         ),
@@ -363,6 +425,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       ],
                       TextFormField(
                         controller: _pairing,
+                        onChanged: (_) =>
+                            setState(() => _pendingPairing = null),
                         readOnly: _saving,
                         obscureText: true,
                         autocorrect: false,
@@ -392,6 +456,20 @@ class _SettingsPageState extends State<SettingsPage> {
                         },
                       ),
                       const SizedBox(height: 12),
+                      if (_pendingPairing case final pairing?) ...[
+                        Text(
+                          '${s.text('New pairing', 'Nové párování')}: ${pairing.name}\n${pairing.host}',
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (Platform.isAndroid) ...[
+                        OutlinedButton.icon(
+                          onPressed: _saving || _scanning ? null : _scan,
+                          icon: const Icon(Icons.qr_code_scanner, size: 18),
+                          label: Text(s.text('Scan QR code', 'Načíst QR kód')),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       Text(
                         s.text(
                           'The link contains a secret. Clipboard access happens only when you press Paste.',
@@ -400,43 +478,37 @@ class _SettingsPageState extends State<SettingsPage> {
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
-                    const SizedBox(height: 28),
-                    _section(s.text('Look & feel', 'Vzhled a chování')),
-                    _choices<WakeTheme>(
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 24),
+                    _select<WakeTheme>(
+                      s.text('Theme', 'Motiv'),
                       WakeTheme.values,
                       _draft.theme,
                       (theme) => switch (theme) {
                         WakeTheme.material => 'Material You',
-                        WakeTheme.glass => 'Glass',
+                        WakeTheme.matrix => 'Matrix',
                         WakeTheme.terminal => 'Terminal',
                       },
                       (theme) => setState(() => _draft.theme = theme),
-                      (theme) => switch (theme) {
-                        WakeTheme.material => Icons.palette_outlined,
-                        WakeTheme.glass => Icons.blur_on_rounded,
-                        WakeTheme.terminal => Icons.terminal_rounded,
-                      },
                     ),
+                    if (_draft.theme != WakeTheme.matrix) ...[
+                      const SizedBox(height: 16),
+                      _select<ThemeMode>(
+                        s.text('Appearance', 'Barevný režim'),
+                        ThemeMode.values,
+                        _draft.appearance,
+                        (mode) => switch (mode) {
+                          ThemeMode.system => s.text('System', 'Systém'),
+                          ThemeMode.light => s.text('Light', 'Světlý'),
+                          ThemeMode.dark => s.text('Dark', 'Tmavý'),
+                        },
+                        (mode) => setState(() => _draft.appearance = mode),
+                      ),
+                    ],
                     const SizedBox(height: 16),
-                    _section(s.text('Appearance', 'Barevný režim')),
-                    _choices<ThemeMode>(
-                      ThemeMode.values,
-                      _draft.appearance,
-                      (mode) => switch (mode) {
-                        ThemeMode.system => s.text('System', 'Systém'),
-                        ThemeMode.light => s.text('Light', 'Světlý'),
-                        ThemeMode.dark => s.text('Dark', 'Tmavý'),
-                      },
-                      (mode) => setState(() => _draft.appearance = mode),
-                      (mode) => switch (mode) {
-                        ThemeMode.system => Icons.brightness_auto_outlined,
-                        ThemeMode.light => Icons.light_mode_outlined,
-                        ThemeMode.dark => Icons.dark_mode_outlined,
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _section(s.text('Language', 'Jazyk')),
-                    _choices<String>(
+                    _select<String>(
+                      s.text('Language', 'Jazyk'),
                       const ['system', 'en', 'cs'],
                       _draft.language,
                       (language) => switch (language) {
@@ -445,21 +517,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         _ => s.text('System', 'Systém'),
                       },
                       (language) => setState(() => _draft.language = language),
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(s.text('Motion', 'Animace')),
-                      subtitle: Text(
-                        s.text(
-                          'A brief RGB pulse on touch. Respects reduced motion.',
-                          'Krátký RGB pulz při stisknutí. Respektuje omezení pohybu v systému.',
-                        ),
-                      ),
-                      value: _draft.motion,
-                      onChanged: _saving
-                          ? null
-                          : (value) => setState(() => _draft.motion = value),
                     ),
                     if (_error != null)
                       Padding(
@@ -474,7 +531,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
-                      onPressed: _saving || _detecting ? null : _save,
+                      onPressed: _saving || _detecting || _scanning
+                          ? null
+                          : _save,
                       icon: _saving
                           ? const SizedBox.square(
                               dimension: 18,
@@ -486,16 +545,31 @@ class _SettingsPageState extends State<SettingsPage> {
                     if (isWaker) ...[
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
-                        onPressed: _saving || _detecting ? null : _share,
+                        onPressed: _saving || _detecting || _scanning
+                            ? null
+                            : _share,
                         icon: const Icon(Icons.ios_share_rounded),
                         label: Text(
-                          s.text(
-                            'Save & share pairing',
-                            'Uložit a sdílet párování',
-                          ),
+                          s.text('Pairing link / QR', 'Párovací odkaz / QR'),
                         ),
                       ),
                     ],
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _saving || _scanning
+                          ? null
+                          : () => Navigator.of(context).push<void>(
+                              MaterialPageRoute(
+                                builder: (_) => const SetupGuide(),
+                              ),
+                            ),
+                      child: Text(
+                        s.text(
+                          'Tailscale & pairing guide',
+                          'Tailscale a párování: návod',
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -506,29 +580,25 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _section(String title) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-  );
-
-  Widget _choices<T>(
+  Widget _select<T>(
+    String title,
     List<T> values,
     T selected,
     String Function(T) label,
-    ValueChanged<T> change, [
-    IconData Function(T)? icon,
-  ]) => Wrap(
-    spacing: 8,
-    runSpacing: 8,
-    children: [
+    ValueChanged<T> change,
+  ) => DropdownButtonFormField<T>(
+    initialValue: selected,
+    isExpanded: true,
+    decoration: InputDecoration(labelText: title),
+    items: [
       for (final value in values)
-        ChoiceChip(
-          label: Text(label(value)),
-          avatar: icon == null ? null : Icon(icon(value), size: 18),
-          selected: selected == value,
-          onSelected: _saving ? null : (_) => change(value),
-        ),
+        DropdownMenuItem(value: value, child: Text(label(value))),
     ],
+    onChanged: _saving
+        ? null
+        : (value) {
+            if (value != null) change(value);
+          },
   );
 }
 
@@ -572,19 +642,35 @@ class _PairingDialogState extends State<_PairingDialog> {
           children: [
             Text('${widget.pairing.name}\n${widget.pairing.host}'),
             const SizedBox(height: 16),
-            const Icon(Icons.key_rounded),
-            const SizedBox(height: 12),
-            Text(
-              s.text(
-                'This link contains your secret key. Share it only with trusted devices. Anyone with it and tailnet access can wake this computer.',
-                'Odkaz obsahuje váš tajný klíč. Sdílejte jej pouze s důvěryhodnými zařízeními. Každý s tímto odkazem a přístupem do tailnetu může počítač probudit.',
+            Center(
+              child: SizedBox(
+                width: 260,
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: QrImageView(
+                    data: widget.pairing.encode(),
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                    semanticsLabel: s.text(
+                      'Secret pairing QR code',
+                      'Tajný párovací QR kód',
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             Text(
               s.text(
-                'Paste the copied link in User settings on the remote device. Clear it from clipboard history after pairing.',
-                'Vložte zkopírovaný odkaz do nastavení uživatele na vzdáleném zařízení. Po spárování jej odstraňte z historie schránky.',
+                'This QR code and link contain your secret key. Share only with your trusted devices. Anyone with it and tailnet access can wake this computer.',
+                'QR kód a odkaz obsahují tajný klíč. Sdílejte je pouze se svými důvěryhodnými zařízeními. Každý s tímto klíčem a přístupem do tailnetu může počítač probudit.',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              s.text(
+                'On the other Android device, select User and Scan QR code. On desktop, paste the copied link. Press Save settings to finish. Clear clipboard history after pairing.',
+                'Na druhém Androidu vyberte Uživatel a Načíst QR kód. Na počítači vložte zkopírovaný odkaz. Dokončete tlačítkem Uložit nastavení. Po párování odstraňte odkaz z historie schránky.',
               ),
             ),
             if (_copied || _failed)

@@ -2,13 +2,13 @@
 
 One button to wake your computer through your own Tailscale devices. Android, Windows, and Linux. No account, subscription, cloud relay, or telemetry.
 
-[Downloads](https://github.com/Majkey25/selia-wake/releases) · [Privacy](https://majkey25.github.io/selia-wake/privacy.html)
+[Downloads](https://github.com/Majkey25/selia-wake/releases) · [Český návod](docs/setup.cs.md) · [Privacy](https://majkey25.github.io/selia-wake/privacy.html)
 
 ## The two roles
 
-**The Waker** stays awake at home, on the same local network as the computer you want to wake. Configure the computer's Ethernet MAC address, enable the Waker, and copy its pairing code.
+**The Waker** stays awake at home, on the same local network as the computer you want to wake. Configure the computer's Ethernet MAC address, enable the Waker, and open its pairing link / QR.
 
-**User** runs on the device you carry. Connect Tailscale, paste the pairing code in Settings, and press Wake. The Waker receives the signed request and sends the local magic packet.
+**User** runs on the device you carry. Connect Tailscale, scan the QR on Android or paste the pairing link in Settings, check the displayed name and address, and save. Press Wake. The Waker receives the signed request and sends the local magic packet.
 
 The same application supports both roles. You do not need the app running on the sleeping computer. The Waker cannot be that sleeping computer.
 
@@ -18,16 +18,18 @@ The same application supports both roles. You do not need the app running on the
 2. Connect the target computer to your router or switch by Ethernet. A USB cable from a phone is not an Ethernet connection. Wireless wake support is hardware-specific.
 3. Install Tailscale separately on the Waker and User devices. Sign in to your own tailnet and allow the devices to communicate.
 4. On your home device, select The Waker. Enter the target name and Ethernet MAC address. The default broadcast is selected from Wi-Fi on Android. On desktop, confirm the physical LAN IPv4 address; automatic detection is only a starting point on computers with several adapters.
-5. Enter the Waker's Tailscale IPv4 address, enable it, and copy its pairing code to the User device. Pairing codes contain a secret. Share them only with trusted devices.
+5. Enter the Waker's Tailscale IPv4 address, enable it, and transfer its pairing link or QR to the User device. Both contain the same secret. Share them only with trusted devices. Scanning previews the name and address; Save confirms pairing. Android requests camera access only when you start scanning. Windows and Linux use the pairing link.
 6. Keep the Waker awake and connected. Android shows a persistent notification with a Stop action. Desktop relay operation lasts while the application is open. The Waker does not start automatically after a reboot.
 
 On Android phones with restrictive battery management, allow background operation for both Selia Wake and Tailscale. A visible foreground service is not a guarantee against manufacturer battery restrictions. Power a dedicated home phone from a wall charger.
 
 The message **Packet sent** confirms transmission. It does not confirm that the target computer booted.
 
+Settings also offers Wi-Fi / WoWLAN and USB Ethernet target types with their hardware requirements. These choices document the target adapter; each sends the same Wake-on-LAN packet. They cannot enable missing firmware or driver support. A regular phone USB charging cable cannot provide USB remote wake. The full guide is also available inside Settings.
+
 ## Appearance
 
-Material You, Glass, and Terminal themes. Light, dark, and system appearance. English and Czech. Reduced-motion settings disable animation. The optional short RGB glitch treatment follows the user's WeTheGods visual style.
+Terminal is the default: monochrome, monospace text, thin rules, and one rectangular action. Material You uses system colors and standard controls. Matrix uses green text on black. No decorative animation or background effects. Light, dark, and system appearance are available for Terminal and Material You. English and Czech UI.
 
 ## Security and network
 
@@ -36,6 +38,8 @@ Pairing keys live in operating-system secure storage. Wake requests use HMAC-SHA
 The Waker listens on TCP **45879** and sends magic packets on local UDP **9**. Tailscale supplies transport encryption. The app does not embed Tailscale, change your firewall, configure your router, or open public internet ports. If a desktop firewall blocks the Waker, allow only your intended Tailscale peers. Do not forward the relay port from the public internet.
 
 Android broadcasts bind to the physical Wi-Fi IPv4 address. If you use a Tailscale exit node, allow local LAN access; the app does not bypass a VPN policy that blocks LAN traffic. Guest Wi-Fi or access-point isolation can also block communication between wireless and wired devices.
+
+See the [bounded security audit](docs/security-audit.md) and [verification record](docs/verification.md) for tested behavior and remaining limits.
 
 ## Build
 
@@ -67,4 +71,4 @@ GitHub Actions checks the Dart sources and builds portable Windows and Linux arc
 - [ASUS firmware Wake-on-LAN setup](https://www.asus.com/support/faq/1045950/)
 - [Protocol and platform contract](docs/protocol.md)
 
-MIT license. Space Grotesk is bundled under its SIL Open Font License in `assets/fonts/OFL.txt`.
+MIT license. IBM Plex Mono is bundled under its SIL Open Font License in `assets/fonts/OFL.txt`.

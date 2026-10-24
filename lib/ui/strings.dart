@@ -53,8 +53,8 @@ class Strings {
     'Nastavení se nepodařilo uložit. Zkontrolujte přístup k úložišti a zkuste to znovu. Budič může být zastavený.',
   );
   String get localHelp => text(
-    'Connect this awake device to the computer’s LAN. Enable Wake-on-LAN in the computer’s firmware and network adapter. A sleeping computer cannot be its own Waker.',
-    'Připojte toto zapnuté zařízení do místní sítě počítače. Povolte Wake-on-LAN ve firmwaru a síťovém adaptéru počítače. Spící počítač nemůže být vlastním budičem.',
+    'Keep this device awake on the computer’s LAN. Enable Wake-on-LAN on the computer.',
+    'Nechte toto zařízení zapnuté v místní síti počítače. Na počítači povolte Wake-on-LAN.',
   );
   String get tailscaleHelp => text(
     'Install and connect Tailscale on both devices. Without a Tailscale IPv4, the local Waker can start, but you cannot export remote pairing.',
@@ -91,6 +91,10 @@ class Strings {
       'wifi_unavailable' => text(
         'Connect the Waker to the computer’s Wi-Fi network and retry.',
         'Připojte budič k Wi-Fi síti počítače a zkuste to znovu.',
+      ),
+      'scanner_failed' || 'camera_permission_denied' => text(
+        'The camera could not be opened. Allow camera access or paste a pairing link.',
+        'Kameru se nepodařilo otevřít. Povolte přístup ke kameře nebo vložte párovací odkaz.',
       ),
       'send_failed' => text(
         'The LAN packet could not be sent. Check the Waker’s LAN connection and broadcast address.',

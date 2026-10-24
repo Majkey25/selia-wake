@@ -16,11 +16,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       for (final theme in WakeTheme.values) {
         for (final brightness in Brightness.values) {
-          final settings = Settings(
-            wakerKey: randomKey(),
-            theme: theme,
-            motion: false,
-          );
+          final settings = Settings(wakerKey: randomKey(), theme: theme);
           await tester.pumpWidget(
             MaterialApp(
               theme: wakeTheme(theme, brightness, null),

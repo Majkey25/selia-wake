@@ -62,3 +62,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("com.google.zxing:core:3.5.4")
+}

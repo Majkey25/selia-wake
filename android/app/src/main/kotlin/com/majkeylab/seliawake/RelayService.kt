@@ -171,7 +171,6 @@ class RelayService : Service() {
                         socket.soTimeout = 1500
                         socket.tcpNoDelay = true
                         val requestError = try {
-                            guard.admit()
                             val request = RelayHttp.read(socket)
                             guard.authorize(request)
                             if (stopping) return@connectionScope

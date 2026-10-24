@@ -8,7 +8,10 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.ResultReceiver
-import io.flutter.embedding.android.FlutterActivity
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import com.google.zxing.client.android.Intents
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.net.StandardProtocolFamily
@@ -19,7 +22,7 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val main = Handler(Looper.getMainLooper())
     private val io = ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, ArrayBlockingQueue(4),
         { task -> Thread(task, "selia-channel") }, ThreadPoolExecutor.AbortPolicy())
@@ -27,6 +30,21 @@ class MainActivity : FlutterActivity() {
     private var channel: MethodChannel? = null
     private var attached = false
     private var controlBusy = false
+    private var pendingScan: MethodChannel.Result? = null
+    private val scanner = registerForActivityResult(ScanContract()) { scan ->
+        val result = pendingScan
+        pendingScan = null
+        if (attached && result != null) {
+            val text = scan.contents
+            if (scan.originalIntent?.getBooleanExtra(Intents.Scan.MISSING_CAMERA_PERMISSION, false) == true) {
+                result.error("camera_permission_denied", "camera_permission_denied", null)
+            } else if (text != null && text.length > 2048) {
+                result.error("invalid_pairing", "invalid_pairing", null)
+            } else {
+                result.success(text)
+            }
+        }
+    }
     private class PermissionRequest(
         val permissions: Array<String>,
         val result: MethodChannel.Result,
@@ -42,6 +60,26 @@ class MainActivity : FlutterActivity() {
             setMethodCallHandler { call, result ->
                 try {
                     when (call.method) {
+                        "scanPairing" -> {
+                            if (pendingScan != null || controlBusy || pendingPermission != null) {
+                                throw RelayFailure("rate_limited")
+                            }
+                            val language = call.argument<String>("language")
+                            if (language !in setOf("en", "cs")) throw RelayFailure("invalid_request")
+                            pendingScan = result
+                            try {
+                                scanner.launch(ScanOptions()
+                                    .setCaptureActivity(PairingScanActivity::class.java)
+                                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                    .setBeepEnabled(false)
+                                    .setBarcodeImageEnabled(false)
+                                    .addExtra(Intents.Scan.SHOW_MISSING_CAMERA_PERMISSION_DIALOG, false)
+                                    .setPrompt(if (language == "cs") "Načtěte párovací QR kód budiče" else "Scan the Waker's pairing QR code"))
+                            } catch (_: Exception) {
+                                pendingScan = null
+                                throw RelayFailure("scanner_failed")
+                            }
+                        }
                         "status" -> result.success(RelayService.status())
                         "start" -> {
                             if (controlBusy) throw RelayFailure("invalid_request")
@@ -223,6 +261,7 @@ class MainActivity : FlutterActivity() {
         pendingPermission?.cancel?.invoke()
         pendingPermission = null
         io.shutdownNow()
+        pendingScan = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
 

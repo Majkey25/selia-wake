@@ -1,7 +1,7 @@
 name: seliawake
 description: One-tap Wake-on-LAN through your own Tailscale devices.
 publish_to: none
-version: 0.1.0+1
+version: 0.1.1+2
 environment:
   sdk: '>=3.10.0 <4.0.0'
 dependencies:
@@ -12,6 +12,7 @@ dependencies:
   crypto: ^3.0.6
   dynamic_color: ^1.8.1
   flutter_secure_storage: ^10.0.0
+  qr_flutter: 4.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -19,6 +20,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   fonts:
-    - family: Space Grotesk
+    - family: IBM Plex Mono
       fonts:
-        - asset: assets/fonts/SpaceGrotesk.ttf
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+        - asset: assets/fonts/IBMPlexMono-Bold.ttf
+          weight: 700

@@ -93,11 +93,6 @@ class WakeAuthorizer {
   int _attempts = 0;
 
   void authorize(Map<String, Object?> body, int now) {
-    if (now - _window >= 60 || now < _window) {
-      _window = now;
-      _attempts = 0;
-    }
-    if (++_attempts > 60) throw const ProtocolFailure('rate_limited', 429);
     _nonces.removeWhere((_, expiry) => expiry <= now);
     final timestamp = body['timestamp'];
     final nonce = body['nonce'];
@@ -118,6 +113,12 @@ class WakeAuthorizer {
     }
     if (_nonces.containsKey(nonce)) throw const ProtocolFailure('replay', 409);
     if (_nonces.length >= 128) throw const ProtocolFailure('rate_limited', 429);
+    if (now - _window >= 60 || now < _window) {
+      _window = now;
+      _attempts = 0;
+    }
+    if (_attempts >= 60) throw const ProtocolFailure('rate_limited', 429);
+    _attempts++;
     _nonces[nonce] = now + 60;
   }
 }

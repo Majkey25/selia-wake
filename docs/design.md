@@ -18,9 +18,11 @@ Success means the magic packet was sent, not that the computer booted. Display f
 
 ## Interface
 
-One primary power button, a target name, honest connection/result status, role selector, and settings. Material, Glass, and Terminal themes. Light, dark, and system appearance. English and Czech UI. Material icons with accessible labels.
+One rectangular action, target name, honest status, and a settings link in a compact ruled panel. Role selection lives in Settings. Terminal is the default; Material You and Matrix are alternatives. Terminal and Material You support light, dark, and system appearance. Matrix is always black with green text. English and Czech UI.
 
-Palette: midnight #151A25, ice #B4D9F8, slate #8593A7, paper #F4F6FA, graphite #253043, signal #E2AA85. Material uses rounded controls; Glass uses restrained translucent surfaces; Terminal uses monochrome rules inspired by the supplied reference. One short RGB split animation on the power button, adapted from the user's WeTheGods visual treatment. Background motion stays sparse and stops with reduced motion or the motion setting.
+Terminal uses black, white, IBM Plex Mono, thin borders, and square controls, following the user's export-panel reference. Material You uses system colors, sans-serif type, and standard rounded controls. Matrix uses #75F59B on black. No decorative background, glass, RGB split, or animation.
+
+Pairing links and QR codes carry the same validated Tailscale IPv4, target name, and secret. Every platform can display a QR; Android can scan using its camera. Windows and Linux import the copied link. Scanned data is shown for review and is not saved until Save settings. Camera images stay on-device and are not saved. Setup instructions explain Tailscale, target hardware, Ethernet, WoWLAN, and USB Ethernet requirements; a phone charging cable is not a remote-wake transmitter.
 
 ## Delivery and verification
 

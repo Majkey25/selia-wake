@@ -7,15 +7,17 @@ import 'protocol.dart';
 
 enum DeviceRole { user, waker }
 
-enum WakeTheme { material, glass, terminal }
+enum WakeTheme { terminal, material, matrix }
+
+enum TargetConnection { ethernet, wifi, usbEthernet }
 
 class Settings {
   Settings({
     this.role = DeviceRole.user,
-    this.theme = WakeTheme.material,
+    this.connection = TargetConnection.ethernet,
+    this.theme = WakeTheme.terminal,
     this.appearance = ThemeMode.system,
     this.language = 'system',
-    this.motion = true,
     this.targetName = '',
     this.mac = '',
     this.broadcast = '',
@@ -25,10 +27,10 @@ class Settings {
     this.pairing,
   });
   DeviceRole role;
+  TargetConnection connection;
   WakeTheme theme;
   ThemeMode appearance;
   String language;
-  bool motion;
   String targetName;
   String mac;
   String broadcast;
@@ -39,10 +41,10 @@ class Settings {
 
   Settings copy() => Settings(
     role: role,
+    connection: connection,
     theme: theme,
     appearance: appearance,
     language: language,
-    motion: motion,
     targetName: targetName,
     mac: mac,
     broadcast: broadcast,
@@ -54,10 +56,10 @@ class Settings {
 
   Map<String, Object?> toJson() => {
     'role': role.name,
+    'connection': connection.name,
     'theme': theme.name,
     'appearance': appearance.name,
     'language': language,
-    'motion': motion,
     'targetName': targetName,
     'mac': mac,
     'broadcast': broadcast,
@@ -94,11 +96,16 @@ class SettingsStore {
               .where((v) => v.name == string('role'))
               .firstOrNull ??
           DeviceRole.user,
+      connection:
+          TargetConnection.values
+              .where((value) => value.name == string('connection'))
+              .firstOrNull ??
+          TargetConnection.ethernet,
       theme:
           WakeTheme.values
               .where((v) => v.name == string('theme'))
               .firstOrNull ??
-          WakeTheme.material,
+          WakeTheme.terminal,
       appearance:
           ThemeMode.values
               .where((v) => v.name == string('appearance'))
@@ -107,7 +114,6 @@ class SettingsStore {
       language: ['system', 'cs', 'en'].contains(string('language'))
           ? string('language')
           : 'system',
-      motion: data['motion'] != false,
       targetName: string('targetName'),
       mac: string('mac'),
       broadcast: string('broadcast'),

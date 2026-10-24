@@ -147,7 +147,7 @@ internal class RelayGuard(private val secret: ByteArray) {
     private var windowStart = SystemClock.elapsedRealtime()
     private var attempts = 0
 
-    fun admit() {
+    private fun admit() {
         val now = SystemClock.elapsedRealtime()
         if (now - windowStart >= 60_000) {
             windowStart = now
@@ -173,6 +173,7 @@ internal class RelayGuard(private val secret: ByteArray) {
         }
         if (request.nonce in nonces) throw RelayFailure("replay")
         if (nonces.size >= 128) throw RelayFailure("rate_limited")
+        admit()
         nonces[request.nonce] = now
     }
 }

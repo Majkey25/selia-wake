@@ -18,3 +18,13 @@ The development computer was not suspended or shut down. Hardware wake, BIOS set
 Linux GUI runtime was not tested locally. `wsl --list --quiet` reported that Windows Subsystem for Linux is not installed. A Linux desktop with GTK 3 and an unlocked Secret Service keyring is needed for that acceptance check.
 
 Google Play internal-track availability must be checked in Play Console separately from these builds and GitHub distribution.
+
+## 24 October 2026, version 0.1.1
+
+- Replaced the decorative home screen with a bordered panel, one rectangular primary action, and Terminal, Material You and Matrix themes. Existing unknown/Glass preferences migrate to Terminal while preserving pairing and target data.
+- `flutter analyze`, nine tests, and signed release APK/AAB builds passed. Tests include the unauthenticated-quota regression, authenticated limit, replay checks, small Czech screen across all themes, and encrypted-settings migration.
+- Installed the release APK on the physical HUAWEI YAL-L21. Terminal light/dark, navigation, QR display, denied camera permission, retry with permission, camera open and cancellation were exercised. Android camera service confirmed the camera was released after cancellation. The displayed QR decoded locally with ZXing to the expected pairing URI; optical scanning from a second device was not exercised.
+- The real Android relay passed the unauthenticated-quota attack test described in the security audit. An independent Windows UDP listener received the configured magic packets from the phone's physical Wi-Fi address through signed requests to its Tailscale address.
+- A further signed request produced the correct 102-byte packet while Selia Wake was in the background and the phone screen was off. This remains a spot check.
+- The target PC's Ethernet adapter was disconnected, while its configured MAC belonged to that Ethernet adapter. Windows listed that Ethernet device as wake-armed, but not the active Wi-Fi adapter. The disconnected target link prevents this Ethernet wake path. BIOS configuration and actual wake after reconnecting Ethernet remain unverified. A phone charging cable does not substitute for that connection.
+- Two bounded independent source-review rounds found and then verified the quota fix. The final review found no remaining confirmed P1/P2 within its scope; it did not independently execute builds or device tests.

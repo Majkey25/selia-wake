@@ -96,9 +96,9 @@ void main() {
     auth.authorize(request(), now);
     auth.authorize(request(timestamp: now + 61), now + 61);
     for (var i = 0; i < 59; i++) {
-      expect(
-        () => auth.authorize(<String, Object?>{}, now + 61),
-        throwsA(isA<ProtocolFailure>()),
+      auth.authorize(
+        request(requestNonce: randomKey(16), timestamp: now + 61),
+        now + 61,
       );
     }
     expect(
@@ -111,6 +111,25 @@ void main() {
       ),
     );
     auth.authorize(request(timestamp: now + 122), now + 122);
+  });
+
+  test('unauthenticated traffic and replays cannot exhaust the wake quota', () {
+    final auth = WakeAuthorizer(key);
+    auth.authorize(request(), now);
+    for (var i = 0; i < 65; i++) {
+      for (final invalid in [
+        <String, Object?>{},
+        {...request(), 'signature': '0' * 64},
+        request(timestamp: now - 31),
+        request(),
+      ]) {
+        expect(
+          () => auth.authorize(invalid, now),
+          throwsA(isA<ProtocolFailure>()),
+        );
+      }
+    }
+    auth.authorize(request(requestNonce: randomKey(16)), now);
   });
 
   test('pairing only permits Tailscale IPv4 and canonical 256-bit secrets', () {
