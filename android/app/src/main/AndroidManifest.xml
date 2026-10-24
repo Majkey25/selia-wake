@@ -37,7 +37,6 @@
         <activity
             android:name=".PairingScanActivity"
             android:exported="false"
-            android:screenOrientation="portrait"
             android:theme="@style/zxing_CaptureTheme" />
         <service
             android:name="com.majkeylab.seliawake.RelayService"
