@@ -1,10 +1,14 @@
 # Selia Wake
 
-[![Build](https://github.com/Majkey25/selia-wake/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Majkey25/selia-wake/actions/workflows/build.yml)
-[![Release](https://img.shields.io/github/v/release/Majkey25/selia-wake?include_prereleases)](https://github.com/Majkey25/selia-wake/releases)
-[![Downloads](https://img.shields.io/github/downloads/Majkey25/selia-wake/total)](https://github.com/Majkey25/selia-wake/releases)
-[![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20CLI-3584e4)](https://majkey25.github.io/selia-wake/terminal.html)
-[![License](https://img.shields.io/badge/license-proprietary-555)](LICENSE)
+[![Build](https://img.shields.io/github/actions/workflow/status/Majkey25/selia-wake/build.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=build)](https://github.com/Majkey25/selia-wake/actions/workflows/build.yml)
+[![Latest release](https://img.shields.io/github/v/release/Majkey25/selia-wake?style=flat-square&logo=github&label=release)](https://github.com/Majkey25/selia-wake/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Majkey25/selia-wake/total?style=flat-square&logo=github&label=downloads)](https://github.com/Majkey25/selia-wake/releases)
+[![Proprietary license](https://img.shields.io/badge/license-proprietary-555?style=flat-square)](LICENSE)
+
+[![Android 8+](https://img.shields.io/badge/Android-8%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://play.google.com/apps/internaltest/4701187673438012050)
+[![Windows and Linux desktop](https://img.shields.io/badge/desktop-Windows%20%7C%20Linux-3584E4?style=flat-square&logo=flutter&logoColor=white)](https://github.com/Majkey25/selia-wake/releases/latest)
+[![CLI x64, ARM64 and ARMv7](https://img.shields.io/badge/CLI-x64%20%7C%20ARM64%20%7C%20ARMv7-00ADD8?style=flat-square&logo=go&logoColor=white)](docs/cli.md)
+[![Tailscale required](https://img.shields.io/badge/Tailscale-required-242424?style=flat-square&logo=tailscale&logoColor=white)](https://majkey25.github.io/selia-wake/setup.html)
 
 Wake your computer through your own Tailscale devices. One primary action, standard controls, useful icons and no decorative graphics. No Selia Wake account, ads, subscription or developer-operated relay.
 
