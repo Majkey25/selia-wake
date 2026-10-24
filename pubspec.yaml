@@ -1,7 +1,7 @@
 name: seliawake
 description: One-tap Wake-on-LAN through your own Tailscale devices.
 publish_to: none
-version: 0.1.1+3
+version: 0.1.2+4
 environment:
   sdk: '>=3.10.0 <4.0.0'
 dependencies:

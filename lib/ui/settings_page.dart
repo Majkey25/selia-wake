@@ -9,6 +9,7 @@ import '../core/relay.dart';
 import '../core/settings.dart';
 import 'strings.dart';
 import 'setup_guide.dart';
+import 'privacy_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -568,6 +569,18 @@ class _SettingsPageState extends State<SettingsPage> {
                           'Tailscale & pairing guide',
                           'Tailscale a párování: návod',
                         ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _saving || _scanning
+                          ? null
+                          : () => Navigator.of(context).push<void>(
+                              MaterialPageRoute(
+                                builder: (_) => const PrivacyPage(),
+                              ),
+                            ),
+                      child: Text(
+                        s.text('Privacy & support', 'Soukromí a podpora'),
                       ),
                     ),
                   ],

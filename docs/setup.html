@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="cs">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jak propojit Selia Wake přes Tailscale a probudit PC přes Ethernet nebo Wi-Fi / WoWLAN."><title>Návod — Selia Wake</title><link rel="stylesheet" href="site.css"></head>
+<body>
+  <a class="skip" href="#main">Přeskočit na obsah</a>
+  <header><a class="brand" href="index.html">Selia Wake</a><nav aria-label="Hlavní navigace"><a href="setup.html" aria-current="page">Návod</a><a href="privacy.html" lang="en">Privacy policy</a><a href="support.html">Podpora</a></nav></header>
+  <main id="main" class="policy">
+    <h1>Propojení a první probuzení</h1>
+    <p>Potřebujete cílový PC, zapnutý budič doma a zařízení pro vzdálené ovládání. Aplikaci nainstalujte na budič a vzdálené zařízení. Spící PC nemůže být vlastním budičem.</p>
+    <h2>1. Připravte cílový počítač</h2>
+    <p>Vyberte Ethernet nebo podporovanou Wi-Fi. Povolte probouzení ve firmwaru a ovladači. Použijte MAC adaptéru, který je připojený k domácí síti a zůstane dostupný během spánku. Ethernet vyžaduje připojený kabel.</p>
+    <section id="wowlan" aria-labelledby="wireless">
+      <h2 id="wireless">Bez kabelu: WoWLAN ve Windows</h2>
+      <p>Wi-Fi adaptér, jeho ovladač i firmware počítače musí podporovat Wake on Wireless LAN. Ve Správci zařízení otevřete Wi-Fi adaptér. Na kartě Upřesnit povolte <strong>Wake on Magic Packet</strong>. Na kartě Řízení spotřeby povolte zařízení probouzet počítač, pokud je tato volba dostupná.</p>
+      <p>V Terminálu vypište zařízení s nastavitelným probouzením a podporou probuzení ze spánku S3:</p>
+      <pre><code>powercfg /devicequery wake_programmable
+powercfg /devicequery wake_from_S3_supported</code></pre>
+      <p>Otevřete Terminál <strong>jako správce</strong>. V následujícím příkazu nahraďte <code>ADAPTER NAME</code> přesným názvem Wi-Fi adaptéru z výpisu. Windows může zobrazit potvrzení UAC.</p>
+      <pre><code>powercfg /deviceenablewake "ADAPTER NAME"</code></pre>
+      <p>Ověřte, že je Wi-Fi adaptér mezi zařízeními povolenými k probouzení:</p>
+      <pre><code>powercfg /devicequery wake_armed</code></pre>
+      <p>Na budiči pak vyberte <strong>Připojení počítače → Wi-Fi (WoWLAN)</strong> a použijte Wi-Fi MAC cílového PC. Výpisy hlásí schopnosti ovladače a nastavení. Funkčnost celé cesty prokáže až skutečný test ze spánku.</p>
+      <p>Pokud ovladač volbu nenabízí nebo příkaz neuspěje, ověřte oprávnění správce, dokumentaci výrobce, firmware a ovladač. Selia Wake chybějící podporu hardwaru nedoplní.</p>
+    </section>
+    <section aria-labelledby="tailscale"><h2 id="tailscale">2. Připojte Tailscale</h2><p>Nainstalujte <a href="https://tailscale.com/download">Tailscale</a> na budič a vzdálené zařízení. Přihlaste je do stejné sítě Tailscale a připojte je. Pravidla sítě musí dovolit komunikaci mezi nimi. Porty routeru nepřesměrovávejte.</p></section>
+    <section aria-labelledby="waker"><h2 id="waker">3. Nastavte budič</h2><p>Na zařízení doma otevřete Nastavení → Budič. Zvolte typ připojení cílového PC, zadejte jeho název a správnou MAC. Tlačítkem Zjistit síť doplňte prázdné adresy. Zkontrolujte broadcast místní sítě a Tailscale IPv4 <em>budiče</em>, například <code>100.x.x.x</code>. Na desktopu zkontrolujte i jeho fyzickou LAN IPv4. Uložte nastavení a spusťte budič.</p></section>
+    <section aria-labelledby="pair"><h2 id="pair">4. Spárujte druhé zařízení</h2><p>Na budiči otevřete Párovací odkaz / QR. Na druhém Androidu vyberte Uživatel a Načíst QR kód. Povolte kameru a načtěte kód. Ve Windows nebo Linuxu vložte zkopírovaný odkaz. Zkontrolujte název a adresu budiče a potvrďte Uložit nastavení.</p><p>QR kód i odkaz obsahují tajný klíč. Sdílejte je pouze s důvěryhodnými zařízeními. Schránka se čte až po stisknutí Vložit. Naskenování samo změnu neuloží. Odstranění jednoho párování neodvolá další kopie klíče.</p></section>
+    <section aria-labelledby="wake"><h2 id="wake">5. Otestujte probuzení ze spánku</h2><p>Nechte budič zapnutý doma ve stejné místní síti a Tailscale připojený na obou zařízeních. Uložte práci na cílovém PC a uspěte jej. Ze vzdáleného zařízení stiskněte Probudit. „Paket odeslán“ potvrzuje přenos, nikoli spuštění počítače. Po probuzení pomůže ověřit poslední zdroj:</p><pre><code>powercfg /lastwake</code></pre></section>
+    <section aria-labelledby="usb"><h2 id="usb">USB a další omezení</h2><p>USB Ethernet potřebuje adaptér s podporou Wake-on-LAN, napájení během spánku a připojení k LAN. Běžný USB nabíjecí kabel telefonu probouzení neposkytuje. Aplikace telefon nepřemění na USB klávesnici.</p><p>Probuzení z úplného vypnutí závisí na hardwaru. Nejprve ověřte spánek. Síť pro hosty, izolace klientů nebo zásady VPN mohou paket zablokovat. Při výstupním uzlu Tailscale povolte přístup do místní sítě.</p><p>Na Androidu povolte běh Selia Wake i Tailscale na pozadí. Pro domácí budič použijte síťovou nabíječku. Na desktopu musí aplikace zůstat otevřená. Po restartu budič znovu spusťte.</p></section>
+    <section aria-labelledby="sources"><h2 id="sources">Podklady a pomoc</h2><p><a href="https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options">Microsoft: powercfg</a> · <a href="https://www.asus.com/us/support/faq/1052580/">ASUS: nastavení bezdrátového probouzení</a> · <a href="https://tailscale.com/blog/wake-on-lan-tailscale-upsnap">Tailscale: proč potřebujete budič</a></p><p><a href="support.html">Kontaktujte podporu</a>, pokud narazíte na chybu aplikace. Neposílejte párovací klíče.</p></section>
+  </main>
+  <footer><a href="index.html">Selia Wake</a><a href="privacy.html" lang="en">Privacy policy</a><a href="delete-data.html">Odstranění dat</a><a href="support.html">Kontakt</a></footer>
+</body>
+</html>

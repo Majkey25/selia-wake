@@ -2,7 +2,7 @@
 
 One button to wake your computer through your own Tailscale devices. Android, Windows, and Linux. No account, subscription, cloud relay, or telemetry.
 
-[Downloads](https://github.com/Majkey25/selia-wake/releases) · [Český návod](docs/setup.cs.md) · [Privacy](https://majkey25.github.io/selia-wake/privacy.html)
+[Website](https://majkey25.github.io/selia-wake/) · [Downloads](https://github.com/Majkey25/selia-wake/releases) · [Český návod](docs/setup.cs.md) · [Privacy](https://majkey25.github.io/selia-wake/privacy.html) · [Support](https://majkey25.github.io/selia-wake/support.html)
 
 ## The two roles
 
@@ -15,7 +15,7 @@ The same application supports both roles. You do not need the app running on the
 ## Setup
 
 1. Enable Wake-on-LAN in the target computer's firmware and Ethernet driver. First test from sleep. Wake from shutdown depends on the hardware.
-2. Connect the target computer to your router or switch by Ethernet. A USB cable from a phone is not an Ethernet connection. Wireless wake support is hardware-specific.
+2. Connect the target computer by Ethernet, or use Wi-Fi with WoWLAN support in its adapter, driver and firmware. On Windows, allow the Wi-Fi adapter to wake the PC; the [setup guide](https://majkey25.github.io/selia-wake/setup.html#wowlan) includes the administrator command and checks. Use the MAC of the adapter that stays connected during sleep. A phone charging cable cannot substitute for this connection.
 3. Install Tailscale separately on the Waker and User devices. Sign in to your own tailnet and allow the devices to communicate.
 4. On your home device, select The Waker. Enter the target name and Ethernet MAC address. The default broadcast is selected from Wi-Fi on Android. On desktop, confirm the physical LAN IPv4 address; automatic detection is only a starting point on computers with several adapters.
 5. Enter the Waker's Tailscale IPv4 address, enable it, and transfer its pairing link or QR to the User device. Both contain the same secret. Share them only with trusted devices. Scanning previews the name and address; Save confirms pairing. Android requests camera access only when you start scanning. Windows and Linux use the pairing link.
