@@ -1,6 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -33,9 +34,11 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final _form = GlobalKey<FormState>();
-  late final Settings _draft;
-  late Map<String, Object?> _savedAppearance;
+  static const _autoSaveDelay = Duration(milliseconds: 350);
+  var _form = GlobalKey<FormState>();
+  late final Settings _original;
+  late Settings _draft;
+  late Settings _saved;
   late final TextEditingController _name;
   late final TextEditingController _mac;
   late final TextEditingController _broadcast;
@@ -45,7 +48,13 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _targetPort;
   final _pairing = TextEditingController();
   Pairing? _pendingPairing;
-  TargetSetup? _pendingSetup;
+  Timer? _autoSave;
+  Future<bool>? _write;
+  bool _restoring = false;
+  bool _hasChanges = false;
+  bool _leaving = false;
+  int _revision = 0;
+  int _savedRevision = 0;
   bool _saving = false;
   bool _detecting = false;
   bool _scanning = false;
@@ -54,25 +63,34 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _networkNote;
   String? _testNote;
 
-  bool get _locked => _saving || _detecting || _scanning || _testing;
-  Map<String, Object?> get _appearanceValues => {
-    'theme': _draft.theme,
-    'appearance': _draft.appearance,
-    'language': _draft.language,
-    ..._draft.customTheme.toJson(),
-  };
-  bool get _appearancePending =>
-      !mapEquals(_appearanceValues, _savedAppearance);
-  bool get _needsExplicitSave => _pendingSetup != null || _appearancePending;
+  bool get _inputLocked => _detecting || _scanning || _testing || _leaving;
+  bool get _locked => _saving || _inputLocked;
+  String _values(Settings settings) => jsonEncode({
+    ...settings.toJson(),
+    'wakerKey': settings.wakerKey,
+    'pairedKey': settings.pairing?.key,
+  });
+
+  void _changed() {
+    if (_restoring || _inputLocked) return;
+    _autoSave?.cancel();
+    setState(() {
+      _hasChanges = true;
+      _revision++;
+      _error = null;
+      _autoSave = Timer(_autoSaveDelay, _apply);
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    _draft = widget.initial.copy();
+    _original = widget.initial.copy();
+    _saved = _original.copy();
+    _draft = _original.copy();
     if (_draft.role == DeviceRole.sleeper && !Sleeper.supported) {
       _draft.role = DeviceRole.user;
     }
-    _savedAppearance = _appearanceValues;
     _name = TextEditingController(text: _draft.targetName);
     _mac = TextEditingController(text: _draft.mac);
     _broadcast = TextEditingController(text: _draft.broadcast);
@@ -84,6 +102,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   void dispose() {
+    _autoSave?.cancel();
     for (final controller in [
       _name,
       _mac,
@@ -127,15 +146,20 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (error) {
       if (mounted) setState(() => _networkNote = s.failure(error));
     } finally {
-      if (mounted) setState(() => _detecting = false);
+      if (mounted) {
+        setState(() => _detecting = false);
+        _changed();
+      }
     }
   }
 
   Future<void> _paste() async {
+    if (_locked) return;
+    final revision = _revision;
     final s = Strings.of(context);
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
-      if (!mounted || _saving) return;
+      if (!mounted || _locked || revision != _revision) return;
       final text = data?.text?.trim();
       if (text == null || text.isEmpty) {
         setState(
@@ -152,6 +176,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _pendingPairing = pairing;
         _error = null;
       });
+      _changed();
     } catch (error) {
       if (mounted) {
         setState(
@@ -181,12 +206,27 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (error) {
       if (mounted) setState(() => _error = s.failure(error));
     } finally {
-      if (mounted) setState(() => _scanning = false);
+      if (mounted) {
+        setState(() => _scanning = false);
+        if (_pendingPairing != null) _changed();
+      }
     }
   }
 
-  Future<bool> _save({bool close = true}) async {
-    if (!_form.currentState!.validate()) return false;
+  Future<bool> _apply({bool validate = true}) {
+    _autoSave?.cancel();
+    _autoSave = null;
+    if (_write case final write?) return write;
+    final write = _persist(validate: validate);
+    _write = write;
+    return write.whenComplete(() => _write = null);
+  }
+
+  Future<bool> _persist({required bool validate}) async {
+    if (validate && !_form.currentState!.validate()) {
+      setState(() => _error = Strings.of(context).invalidChanges);
+      return false;
+    }
     final s = Strings.of(context);
     _draft
       ..targetName = _name.text.trim()
@@ -204,24 +244,84 @@ class _SettingsPageState extends State<SettingsPage> {
         return false;
       }
     }
+    if (_values(_draft) == _values(_saved)) {
+      setState(() {
+        _hasChanges = _values(_draft) != _values(_original);
+        _savedRevision = _revision;
+      });
+      return true;
+    }
+    final next = _draft.copy();
+    final revision = _revision;
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
-      await widget.save(_draft.copy());
+      await widget.save(next);
       if (!mounted) return false;
-      _pairing.clear();
-      _pendingPairing = null;
-      _pendingSetup = null;
-      _savedAppearance = _appearanceValues;
-      if (close) Navigator.of(context).pop();
+      if (revision == _revision) {
+        _restoring = true;
+        _pairing.clear();
+        _restoring = false;
+        _pendingPairing = null;
+        _hasChanges = _values(next) != _values(_original);
+      }
+      _saved = next;
+      _savedRevision = revision;
       return true;
     } catch (_) {
       if (mounted) setState(() => _error = s.saveError);
       return false;
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          if (revision != _revision && !_leaving) {
+            _autoSave?.cancel();
+            _autoSave = Timer(_autoSaveDelay, _apply);
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _replace(Settings settings) async {
+    if (_locked) return;
+    _autoSave?.cancel();
+    _restoring = true;
+    _draft = settings.copy();
+    _name.text = _draft.targetName;
+    _mac.text = _draft.mac;
+    _broadcast.text = _draft.broadcast;
+    _lan.text = _draft.lanIp;
+    _host.text = _draft.wakerHost;
+    _targetHost.text = _draft.targetHost;
+    _targetPort.text = '${_draft.targetPort}';
+    _pairing.clear();
+    setState(() {
+      _hasChanges = true;
+      _revision++;
+      _pendingPairing = null;
+      _networkNote = null;
+      _testNote = null;
+      _error = null;
+      _form = GlobalKey<FormState>();
+    });
+    _restoring = false;
+    await _apply(validate: false);
+  }
+
+  Future<void> _leave() async {
+    if (_leaving || _detecting || _scanning || _testing) return;
+    setState(() => _leaving = true);
+    try {
+      do {
+        if (!await _apply() || !mounted) return;
+      } while (_savedRevision != _revision);
+      Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _leaving = false);
     }
   }
 
@@ -233,6 +333,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _error = null;
       _testNote = null;
     });
+    var imported = false;
     try {
       final text = scan
           ? await widget.relay.scanPairing(s.czech ? 'cs' : 'en')
@@ -246,8 +347,12 @@ class _SettingsPageState extends State<SettingsPage> {
       _targetPort.text = '${setup.targetPort}';
       setState(() {
         _draft.connection = setup.connection;
-        _pendingSetup = setup;
+        _networkNote = s.text(
+          'Imported ${setup.name}. MAC: ${setup.mac}',
+          'Načteno: ${setup.name}. MAC: ${setup.mac}',
+        );
       });
+      imported = true;
     } catch (error) {
       if (mounted) {
         setState(
@@ -260,19 +365,22 @@ class _SettingsPageState extends State<SettingsPage> {
         );
       }
     } finally {
-      if (mounted) setState(() => _scanning = false);
+      if (mounted) {
+        setState(() => _scanning = false);
+        if (imported) _changed();
+      }
     }
   }
 
   Future<void> _testLocal() async {
-    if (_locked || _needsExplicitSave) return;
+    if (_locked) return;
     final s = Strings.of(context);
     setState(() {
       _testing = true;
       _testNote = null;
     });
     try {
-      if (!await _save(close: false) || !mounted) return;
+      if (!await _apply() || !mounted) return;
       await widget.relay.sendLocal(
         _draft.mac,
         _draft.broadcast,
@@ -287,13 +395,13 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _share() async {
-    if (_locked || _needsExplicitSave) return;
+    if (_locked) return;
     final s = Strings.of(context);
     if (!isTailnetAddress(_host.text.trim())) {
       setState(() => _error = '${s.hostError}\n${s.tailscaleHelp}');
       return;
     }
-    if (!await _save(close: false) || !mounted) return;
+    if (!await _apply() || !mounted) return;
     final pairing = Pairing(
       host: _draft.wakerHost,
       key: _draft.wakerKey,
@@ -326,7 +434,7 @@ class _SettingsPageState extends State<SettingsPage> {
     padding: const EdgeInsets.only(bottom: 16),
     child: WakeField(
       controller: controller,
-      readOnly: _locked,
+      readOnly: _inputLocked,
       label: label,
       hint: hint,
       icon: icon,
@@ -360,15 +468,30 @@ class _SettingsPageState extends State<SettingsPage> {
     final isWaker = _draft.role == DeviceRole.waker;
     final isSleeper = _draft.role == DeviceRole.sleeper;
     return PopScope(
-      canPop: !_locked,
+      canPop: !_locked && _autoSave == null && _error == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_leave());
+      },
       child: WakeScaffold(
         title: s.settings,
         actions: [
-          WakeIconButton(
-            tooltip: s.saveSettings,
-            icon: const Icon(Icons.save_outlined),
-            onPressed: _locked ? null : _save,
-          ),
+          if (_hasChanges)
+            Tooltip(
+              message: s.revertChanges,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 180),
+                child: WakeButton(
+                  subtle: true,
+                  icon: const Icon(Icons.undo_rounded),
+                  label: Text(
+                    s.revertChanges,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onPressed: _locked ? null : () => _replace(_original),
+                ),
+              ),
+            ),
         ],
         body: SafeArea(
           top: false,
@@ -377,7 +500,7 @@ class _SettingsPageState extends State<SettingsPage> {
               constraints: const BoxConstraints(maxWidth: 600),
               child: Form(
                 key: _form,
-                onChanged: () => setState(() {}),
+                onChanged: _changed,
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                   keyboardDismissBehavior:
@@ -385,6 +508,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(_saving ? s.savingChanges : s.autoSaveHelp),
+                      ),
+                      const SizedBox(height: 20),
                       _heading(
                         s.text('This device', 'Toto zařízení'),
                         Icons.devices_outlined,
@@ -402,7 +530,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           DeviceRole.waker => s.waker,
                           DeviceRole.sleeper => s.sleeper,
                         },
-                        (role) => setState(() => _draft.role = role),
+                        (role) {
+                          setState(() => _draft.role = role);
+                          _changed();
+                        },
                         icon: Icons.devices_outlined,
                       ),
                       const SizedBox(height: 12),
@@ -411,8 +542,8 @@ class _SettingsPageState extends State<SettingsPage> {
                             ? s.localHelp
                             : isSleeper
                             ? s.text(
-                                'Save to set up this PC’s wake adapter. A separate Waker must stay awake on this LAN.',
-                                'Uložte nastavení a nastavte probouzení tohoto PC. Samostatný budič musí zůstat zapnutý ve stejné síti.',
+                                'Return to set up this PC’s wake adapter. A separate Waker must stay awake on this LAN.',
+                                'Vraťte se a nastavte probouzení tohoto PC. Samostatný budič musí zůstat zapnutý ve stejné síti.',
                               )
                             : s.text(
                                 'Paste a pairing link from your Waker. Connect Tailscale on both devices.',
@@ -455,16 +586,6 @@ class _SettingsPageState extends State<SettingsPage> {
                               s.text('Scan Sleeper QR', 'Načíst QR spáče'),
                             ),
                           ),
-                        if (_pendingSetup case final setup?)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Semantics(
-                              liveRegion: true,
-                              child: Text(
-                                '${s.text('Preview', 'Náhled')}: ${setup.name}\nMAC: ${setup.mac}\n${s.text('Review the fields below. Save settings to apply.', 'Zkontrolujte pole níže. Použijte tlačítko Uložit nastavení.')}',
-                              ),
-                            ),
-                          ),
                         Text(
                           s.networkDetails,
                           style: Theme.of(context).textTheme.bodySmall,
@@ -479,8 +600,10 @@ class _SettingsPageState extends State<SettingsPage> {
                             TargetConnection.wifi => 'Wi-Fi (WoWLAN)',
                             TargetConnection.usbEthernet => 'USB Ethernet',
                           },
-                          (connection) =>
-                              setState(() => _draft.connection = connection),
+                          (connection) {
+                            setState(() => _draft.connection = connection);
+                            _changed();
+                          },
                           icon: Icons.cable_outlined,
                         ),
                         const SizedBox(height: 12),
@@ -603,25 +726,8 @@ class _SettingsPageState extends State<SettingsPage> {
                           s.text('Pair and test', 'Párování a test'),
                           Icons.phonelink_outlined,
                         ),
-                        if (_pendingSetup != null)
-                          Semantics(
-                            liveRegion: true,
-                            child: Text(s.saveImportedSetup),
-                          ),
-                        if (_appearancePending)
-                          Semantics(
-                            liveRegion: true,
-                            child: Text(
-                              s.text(
-                                'Save settings to apply appearance changes first.',
-                                'Nejprve uložte nastavení vzhledu.',
-                              ),
-                            ),
-                          ),
                         WakeButton(
-                          onPressed: _locked || _needsExplicitSave
-                              ? null
-                              : _share,
+                          onPressed: _locked ? null : _share,
                           icon: const Icon(Icons.ios_share_rounded),
                           label: Text(
                             s.text('Pairing link / QR', 'Párovací odkaz / QR'),
@@ -629,9 +735,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         const SizedBox(height: 12),
                         WakeButton(
-                          onPressed: _locked || _needsExplicitSave
-                              ? null
-                              : _testLocal,
+                          onPressed: _locked ? null : _testLocal,
                           icon: const Icon(Icons.send_outlined),
                           label: Text(
                             s.text(
@@ -668,11 +772,14 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                               onPressed: _locked
                                   ? null
-                                  : () => setState(() {
-                                      _draft.pairing = null;
-                                      _pendingPairing = null;
-                                      _pairing.clear();
-                                    }),
+                                  : () {
+                                      setState(() {
+                                        _draft.pairing = null;
+                                        _pendingPairing = null;
+                                        _pairing.clear();
+                                      });
+                                      _changed();
+                                    },
                               icon: const Icon(Icons.link_off_rounded),
                             ),
                           ),
@@ -685,7 +792,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           icon: Icons.key_outlined,
                           onChanged: (_) =>
                               setState(() => _pendingPairing = null),
-                          readOnly: _locked,
+                          readOnly: _inputLocked,
                           obscure: true,
                           keyboardType: TextInputType.visiblePassword,
                           suffix: WakeIconButton(
@@ -798,7 +905,10 @@ class _SettingsPageState extends State<SettingsPage> {
                             ThemeMode.light => s.text('Light', 'Světlý'),
                             ThemeMode.dark => s.text('Dark', 'Tmavý'),
                           },
-                          (mode) => setState(() => _draft.appearance = mode),
+                          (mode) {
+                            setState(() => _draft.appearance = mode);
+                            _changed();
+                          },
                           icon: Icons.brightness_6_outlined,
                         ),
                         const SizedBox(height: 16),
@@ -814,29 +924,17 @@ class _SettingsPageState extends State<SettingsPage> {
                         custom: _draft.customTheme,
                         onChanged: _locked
                             ? null
-                            : (theme) => setState(() => _draft.theme = theme),
+                            : (theme) {
+                                setState(() => _draft.theme = theme);
+                                _changed();
+                              },
                       ),
                       if (_draft.theme == WakeTheme.custom) ...[
                         const SizedBox(height: 20),
                         CustomThemeEditor(
                           key: ObjectKey(_draft.customTheme),
                           value: _draft.customTheme,
-                          readOnly: _locked,
-                        ),
-                        WakeButton(
-                          subtle: true,
-                          onPressed: _locked
-                              ? null
-                              : () => setState(
-                                  () => _draft.customTheme = CustomTheme(),
-                                ),
-                          icon: const Icon(Icons.restore),
-                          label: Text(
-                            s.text(
-                              'Reset custom theme',
-                              'Obnovit vlastní motiv',
-                            ),
-                          ),
+                          readOnly: _inputLocked,
                         ),
                       ],
                       const SizedBox(height: 16),
@@ -849,8 +947,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           'cs' => 'Čeština',
                           _ => s.text('System', 'Systém'),
                         },
-                        (language) =>
-                            setState(() => _draft.language = language),
+                        (language) {
+                          setState(() => _draft.language = language);
+                          _changed();
+                        },
                         icon: Icons.language_outlined,
                       ),
                       if (_error != null)
@@ -866,17 +966,16 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       const SizedBox(height: 16),
                       WakeButton(
-                        primary: true,
-                        onPressed: _locked ? null : _save,
-                        icon: _saving
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.check_rounded),
-                        label: Text(s.saveSettings),
+                        onPressed: _locked
+                            ? null
+                            : () => _replace(Settings(wakerKey: randomKey())),
+                        icon: const Icon(Icons.restart_alt_rounded),
+                        label: Text(s.resetDefaults),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        s.resetDefaultsHelp,
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                       const SizedBox(height: 8),
                       WakeButton(
@@ -985,8 +1084,8 @@ class _PairingDialogState extends State<_PairingDialog> {
             const SizedBox(height: 12),
             Text(
               s.text(
-                'On the other Android device, select User and Scan QR code. On desktop, paste the copied link. Press Save settings to finish. Clear clipboard history after pairing.',
-                'Na druhém Androidu vyberte Uživatel a Načíst QR kód. Na počítači vložte zkopírovaný odkaz. Dokončete tlačítkem Uložit nastavení. Po párování odstraňte odkaz z historie schránky.',
+                'On the other Android device, select User and Scan QR code. On desktop, paste the copied link. Valid pairing links apply automatically. Clear clipboard history after pairing.',
+                'Na druhém Androidu vyberte Uživatel a Načíst QR kód. Na počítači vložte zkopírovaný odkaz. Platné párovací odkazy se použijí automaticky. Po párování odstraňte odkaz z historie schránky.',
               ),
             ),
             if (_copied || _failed)

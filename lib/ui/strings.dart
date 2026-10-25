@@ -18,6 +18,21 @@ class Strings {
   String text(String english, String czech) => this.czech ? czech : english;
   String get settings => text('Settings', 'Nastavení');
   String get saveSettings => text('Save settings', 'Uložit nastavení');
+  String get revertChanges => text('Revert changes', 'Vrátit změny');
+  String get resetDefaults => text('Reset defaults', 'Obnovit výchozí');
+  String get autoSaveHelp => text(
+    'Changes apply automatically. Revert restores settings from when you opened this page.',
+    'Změny se ukládají automaticky. Vrátit změny obnoví nastavení při otevření této stránky.',
+  );
+  String get savingChanges => text('Saving changes…', 'Ukládání změn…');
+  String get invalidChanges => text(
+    'Changes not saved. Correct the marked fields.',
+    'Změny nebyly uloženy. Opravte označená pole.',
+  );
+  String get resetDefaultsHelp => text(
+    'Restores default appearance and disconnects paired devices. Target and network settings are cleared. Revert can undo this while this page is open.',
+    'Obnoví výchozí vzhled a odpojí spárovaná zařízení. Smaže nastavení cíle a sítě. Dokud je tato stránka otevřená, lze reset vrátit.',
+  );
   String get appearance => text('Appearance', 'Vzhled');
   String themeName(WakeTheme theme) => switch (theme) {
     WakeTheme.platform => platformTheme,
@@ -35,12 +50,8 @@ class Strings {
     _ => text('Platform (Material You)', 'Platforma (Material You)'),
   };
   String get platformStyleHelp => text(
-    'Tap a preview to choose. Save settings to apply.',
-    'Klepnutím na náhled vyberte motiv. Použijte tlačítko Uložit nastavení.',
-  );
-  String get saveImportedSetup => text(
-    'Save settings to apply imported setup first',
-    'Nejprve uložte nastavení, aby se načtené údaje použily',
+    'Tap a preview to apply the theme.',
+    'Klepnutím na náhled použijete motiv.',
   );
   String get retry => text('Retry', 'Zkusit znovu');
   String get user => text('User', 'Uživatel');

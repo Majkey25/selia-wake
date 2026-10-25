@@ -13,16 +13,23 @@ import 'sleeper_page.dart';
 import 'strings.dart';
 
 class WakeHome extends StatefulWidget {
-  const WakeHome({super.key, required this.settings, required this.save});
+  const WakeHome({
+    super.key,
+    required this.settings,
+    required this.save,
+    this.relay,
+  });
   final Settings settings;
   final Future<void> Function(Settings) save;
+  final Relay? relay;
 
   @override
   State<WakeHome> createState() => _WakeHomeState();
 }
 
 class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
-  final _relay = Relay();
+  late final Relay _relay;
+  late Settings _persisted;
   RelayStatus? _status;
   bool _statusFailed = false;
   bool _refreshing = false;
@@ -39,6 +46,8 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _relay = widget.relay ?? Relay();
+    _persisted = widget.settings.copy();
     WidgetsBinding.instance.addObserver(this);
     _foreground =
         WidgetsBinding.instance.lifecycleState == null ||
@@ -56,6 +65,9 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant WakeHome oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.settings, widget.settings)) {
+      _persisted = widget.settings.copy();
+    }
     if (oldWidget.settings.role != widget.settings.role) {
       _epoch++;
       if (_foreground) _startPolling();
@@ -160,6 +172,35 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
   }
 
   Future<void> _save(Settings next) async {
+    final before = _config(_persisted);
+    final after = _config(next);
+    if (_persisted.role == next.role &&
+        _persisted.wakerKey == next.wakerKey &&
+        (next.role != DeviceRole.waker ||
+            (
+                  before.mac,
+                  before.broadcast,
+                  before.lanIp,
+                  before.name,
+                  before.language,
+                ) ==
+                (
+                  after.mac,
+                  after.broadcast,
+                  after.lanIp,
+                  after.name,
+                  after.language,
+                ))) {
+      await widget.save(next);
+      _persisted = next.copy();
+      if (mounted) {
+        setState(() {
+          _message = null;
+          _messageError = false;
+        });
+      }
+      return;
+    }
     final s = Strings.of(context);
     setState(() {
       _busy = true;
@@ -175,6 +216,7 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
         if (stopped.running) throw StateError('stop_failed');
       }
       await widget.save(next);
+      _persisted = next.copy();
       if (!mounted) return;
       setState(() {
         _message = null;
@@ -207,7 +249,7 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (context) =>
-            SettingsPage(initial: widget.settings, relay: _relay, save: _save),
+            SettingsPage(initial: _persisted, relay: _relay, save: _save),
       ),
     );
     if (mounted) setState(() => _editing = false);

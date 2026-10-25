@@ -169,3 +169,31 @@ Google Play internal-track availability must be checked in Play Console separate
   fixes and found the appearance save issue. MPT Astra r3 confirmed that fix
   with no remaining confirmed P1/P2 in its bounded source snapshot. These
   source reviews did not independently execute tests or prove hardware wake.
+
+### Automatic settings update, version code 3010
+
+* The user replaced explicit Save with automatic application of valid edits.
+  Settings now saves after a short typing pause. Revert changes restores the
+  snapshot from when the page opened. Reset defaults clears connection and
+  target details, restores default appearance and rotates the Waker key.
+  Revert can restore that key while the same Settings page remains open.
+* Writes are serialized and use immutable snapshots. A new regression types
+  during a pending write and presses Back; the latest value persists before
+  navigation completes. Invalid fields do not save. Appearance-only changes
+  preserve the running Waker instead of stopping and restarting it.
+* All 89 Flutter tests and Flutter analysis passed. The suite includes automatic
+  import, explicit clipboard access, invalid custom values, reset/key rotation,
+  Revert, failed persistence and pending-write navigation. These tests do not
+  establish hardware wake or successful privileged OS mutation.
+* MPT Astra r4 found two P2 races. The parent now tracks its last successfully
+  persisted settings immediately, so consecutive saves do not compare against
+  a widget awaiting rebuild. Pending clipboard results are discarded after a
+  newer edit, reset or departure. Regressions cover active relay A/B/A ordering,
+  appearance without restart and a delayed Paste completing after Reset.
+* MPT Astra r5 confirmed both race fixes with no remaining confirmed P1/P2 in
+  its source snapshot. Primary's full 89-test run passed afterward.
+* On the physical HUAWEI YAL-L21 running signed build 3010, choosing Matrix
+  applied the theme without Save. Revert restored the opening Platform theme
+  and removed its button. The foreground service retained the same Android
+  ServiceRecord, creation time and start ID through both appearance writes.
+  The existing target, pairing and Czech/light preferences were preserved.
