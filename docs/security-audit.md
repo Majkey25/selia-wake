@@ -39,6 +39,19 @@ live gateway interoperability and actual board execution remain unverified.
 
 ## Pairing and QR boundary
 
+Version 0.3.0 updates this flow at the user's request: valid explicit Paste or
+Scan actions save automatically. Revert restores the opening settings while
+the page remains open. Reset defaults clears connections and rotates the
+Waker key; Revert during that visit can restore the previous key. The earlier
+explicit-Save and no-rotation descriptions below record version 0.2.0.
+
+The 25 October source review found and closed two autosave races: consecutive
+saves comparing against a widget awaiting rebuild, and a delayed clipboard
+result restoring pairing after Reset. The parent now tracks successful writes
+immediately, and Paste rejects results after newer edits. Independent follow-up
+review found no remaining confirmed P1/P2 in its supplied snapshot. Primary ran
+all 89 Flutter tests; the reviewer did not independently execute them.
+
 QR and copied links carry the same 32-byte pairing key. Scanning is an explicit Android action, requires camera permission, accepts QR only, limits decoded text to 2048 characters, then uses the existing Pairing.parse validator. Scanned name and host are shown before explicit Save. Cancelling does not persist the draft. Clipboard reads and writes require the corresponding user action.
 
 The scanner activity is not exported. Barcode-image saving and the scan beep are disabled. The camera decodes locally through ZXing; the app does not upload or retain camera images. Denied permission returns an app error, and cancelling releases the camera. The reviewed native configuration stays in memory, while persistent pairing secrets use OS secure storage. Android backup is disabled.

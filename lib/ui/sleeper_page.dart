@@ -369,8 +369,8 @@ class _TargetDialogState extends State<_TargetDialog> {
             const SizedBox(height: 12),
             Text(
               s.text(
-                'On the Waker, open Settings, paste or scan this setup, review the preview, then press Save settings.',
-                'Na budiči otevřete Nastavení, vložte nebo načtěte toto nastavení, zkontrolujte náhled a stiskněte Uložit nastavení.',
+                'On the Waker, open Settings and paste or scan this setup. Valid settings apply automatically. Check the imported name and MAC.',
+                'Na budiči otevřete Nastavení a vložte nebo načtěte toto nastavení. Platné údaje se použijí automaticky. Zkontrolujte načtený název a MAC.',
               ),
             ),
             if (_message != null)

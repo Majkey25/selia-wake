@@ -17,7 +17,6 @@ class Strings {
 
   String text(String english, String czech) => this.czech ? czech : english;
   String get settings => text('Settings', 'Nastavení');
-  String get saveSettings => text('Save settings', 'Uložit nastavení');
   String get revertChanges => text('Revert changes', 'Vrátit změny');
   String get resetDefaults => text('Reset defaults', 'Obnovit výchozí');
   String get autoSaveHelp => text(

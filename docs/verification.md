@@ -191,9 +191,14 @@ Google Play internal-track availability must be checked in Play Console separate
   newer edit, reset or departure. Regressions cover active relay A/B/A ordering,
   appearance without restart and a delayed Paste completing after Reset.
 * MPT Astra r5 confirmed both race fixes with no remaining confirmed P1/P2 in
-  its source snapshot. Primary's full 89-test run passed afterward.
+  its source snapshot. Primary's full 89-test run passed after the fixes.
 * On the physical HUAWEI YAL-L21 running signed build 3010, choosing Matrix
   applied the theme without Save. Revert restored the opening Platform theme
   and removed its button. The foreground service retained the same Android
   ServiceRecord, creation time and start ID through both appearance writes.
   The existing target, pairing and Czech/light preferences were preserved.
+* Terminal selection also survived force-stop/relaunch. Platform was restored
+  afterward and the Waker was left running. Final package code 3011 only
+  corrects an obsolete Save instruction in the desktop target-sharing dialog
+  and removes its unused translation. Version code 3010 remains an unpublished
+  Play artifact; it is not substituted with different bytes.
