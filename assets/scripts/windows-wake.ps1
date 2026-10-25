@@ -1,7 +1,6 @@
 param(
     [string] $Action = 'Inspect',
-    [string] $AdapterId = '',
-    [switch] $ElevatedWorker
+    [string] $AdapterId = ''
 )
 
 Set-StrictMode -Version Latest
@@ -13,7 +12,6 @@ $VerbosePreference = 'SilentlyContinue'
 $DebugPreference = 'SilentlyContinue'
 $systemDirectory = [Environment]::GetFolderPath([Environment+SpecialFolder]::System)
 $powerCfg = Join-Path $systemDirectory 'powercfg.exe'
-$windowsPowerShell = Join-Path $systemDirectory 'WindowsPowerShell\v1.0\powershell.exe'
 $nativeEncoding = [Console]::OutputEncoding
 
 function ConvertTo-NativeArgument([string] $Value) {
@@ -41,7 +39,7 @@ function Invoke-PowerCfg([string[]] $NativeArguments) {
         $stderr = $process.StandardError.ReadToEndAsync()
         if (-not $process.WaitForExit(10000)) {
             $process.Kill()
-            $process.WaitForExit()
+            $null = $process.WaitForExit(3000)
             throw 'powercfg timed out after 10 seconds.'
         }
         $output = $stdout.GetAwaiter().GetResult().Trim()
@@ -138,7 +136,7 @@ function Get-WakeSnapshot {
         } else {
             $detail += 'The adapter cannot be mapped uniquely to a powercfg device; wake capability and arming are unknown.'
         }
-        $detail += 'Windows settings do not verify firmware support or physical wake. Stored driver settings may require an adapter restart to take effect.'
+        $detail += 'Windows settings do not verify firmware support or physical wake. Magic Packet is a stored driver setting; its activation and prior restart history are unknown from a fresh inspection.'
         $report = [ordered]@{
             id = ([guid] $adapter.InterfaceGuid).ToString('D')
             name = [string] $adapter.Name
@@ -170,7 +168,6 @@ $report = [ordered]@{ platform = 'windows'; machineName = [Environment]::Machine
 $restartRequired = $false
 $mutationAttempted = $false
 $failed = $false
-$sourceLock = $null
 try {
     if ($Action -notin @('Inspect', 'Enable')) { throw 'Action must be Inspect or Enable.' }
     $selectedGuid = [guid]::Empty
@@ -180,11 +177,6 @@ try {
         }
         $AdapterId = $selectedGuid.ToString('D')
     }
-    $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-    $isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if ($ElevatedWorker -and ($Action -ne 'Enable' -or -not $isAdmin)) { throw 'The elevated worker requires Enable and administrator privileges.' }
-    # Hold the reviewed file through UAC and worker completion, including caller cleanup attempts.
-    $sourceLock = [IO.File]::Open($PSCommandPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
     foreach ($module in @('NetAdapter', 'NetTCPIP', 'CimCmdlets')) {
         Import-Module (Join-Path $systemDirectory "WindowsPowerShell\v1.0\Modules\$module\$module.psd1") -ErrorAction Stop
     }
@@ -199,38 +191,15 @@ try {
             throw 'Windows does not expose an unambiguous, configurable wake device for this adapter.'
         }
         if ($entry.Report.wakeEnabled -ne $true -or $entry.Magic.Enabled -ne $true) {
-            if (-not $isAdmin) {
-                $arguments = @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath, '-Action', 'Enable', '-AdapterId', $AdapterId, '-ElevatedWorker')
-                $commandLine = ($arguments | ForEach-Object { ConvertTo-NativeArgument $_ }) -join ' '
-                try {
-                    $worker = Start-Process -FilePath $windowsPowerShell -ArgumentList $commandLine -WorkingDirectory $systemDirectory -Verb RunAs -WindowStyle Hidden -PassThru -Wait
-                } catch {
-                    throw "Administrator approval was cancelled or elevation failed: $($_.Exception.Message)"
-                }
-                try {
-                    $worker.Refresh()
-                    $workerExit = $worker.ExitCode
-                } finally {
-                    $worker.Dispose()
-                }
-                # Only the hidden worker uses 3010/3011 to preserve a pending restart across UAC.
-                $restartRequired = $workerExit -in @(3010, 3011)
-                $mutationAttempted = $true
-                $snapshot = Get-WakeSnapshot
-                $report = $snapshot.Report
-                if ($workerExit -notin @(0, 3010)) {
-                    throw "Elevated wake configuration failed (exit $workerExit). Settings may have partially changed; inspect the reported state."
-                }
-            } else {
-                $mutationAttempted = $true
-                if ($entry.Report.wakeEnabled -ne $true) { $null = Invoke-PowerCfg @('/deviceenablewake', $entry.DeviceName) }
-                if ($entry.Magic.Enabled -ne $true) {
-                    Set-NetAdapterAdvancedProperty -InputObject $entry.Magic.Property -RegistryValue $entry.Magic.Desired -NoRestart -Confirm:$false | Out-Null
-                    $restartRequired = $true
-                }
-                $snapshot = Get-WakeSnapshot
-                $report = $snapshot.Report
+            # Use only the existing token; permission failures are reported below.
+            $mutationAttempted = $true
+            if ($entry.Report.wakeEnabled -ne $true) { $null = Invoke-PowerCfg @('/deviceenablewake', $entry.DeviceName) }
+            if ($entry.Magic.Enabled -ne $true) {
+                Set-NetAdapterAdvancedProperty -InputObject $entry.Magic.Property -RegistryValue $entry.Magic.Desired -NoRestart -Confirm:$false | Out-Null
+                $restartRequired = $true
             }
+            $snapshot = Get-WakeSnapshot
+            $report = $snapshot.Report
             $fresh = @($snapshot.Entries | Where-Object { $_.Report.id -eq $AdapterId })
             if ($fresh.Count -ne 1 -or $fresh[0].Report.wakeEnabled -ne $true -or $fresh[0].Magic.Enabled -ne $true) {
                 throw 'Windows did not confirm both wake arming and the stored Magic Packet setting after the operation.'
@@ -251,26 +220,23 @@ try {
         } catch { $message += " Fresh inspection also failed: $($_.Exception.Message)" }
         $message += ' An operation may have changed settings before failing.'
     }
+    if ($Action -eq 'Enable') {
+        $message += ' Wake configuration requiring additional permissions must be performed separately in native Windows settings. This app does not request administrator permission automatically.'
+    }
     $report['error'] = $message
-} finally {
-    if ($null -ne $sourceLock) { $sourceLock.Dispose() }
 }
 
+if ($restartRequired) {
+    # Preserve the validated operation identity even if fresh enumeration lost it.
+    $report['pendingRestart'] = @{ id = $entry.Report.id; mac = $entry.Report.mac }
+}
 foreach ($adapterReport in $report.adapters) {
     if ($adapterReport.id -eq $AdapterId -and $restartRequired) {
         $adapterReport.restartRequired = $true
-        $adapterReport.detail += ' The Magic Packet property changed without restarting the adapter; a restart is required before relying on it.'
+        $adapterReport.detail += ' The stored Magic Packet property changed without restarting the adapter; its effect is unverified.'
     }
 }
 if ($AdapterId -ne '') { $report.adapters = @($report.adapters | Sort-Object @{ Expression = { $_.id -ne $AdapterId } }) }
-if ($ElevatedWorker) {
-    if ($failed) {
-        if ($restartRequired) { exit 3011 }
-        exit 1
-    }
-    if ($restartRequired) { exit 3010 }
-    exit 0
-}
 $json = ConvertTo-Json -InputObject $report -Depth 5 -Compress
 $bytes = [Text.Encoding]::UTF8.GetBytes($json + [Environment]::NewLine)
 $output = [Console]::OpenStandardOutput()

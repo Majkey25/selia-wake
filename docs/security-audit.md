@@ -2,6 +2,49 @@
 
 Scope: Flutter pairing, configuration and HTTP relay; Android relay authentication, request parsing, service and QR boundary; manifest and privacy text. This is a source review with focused runtime checks, not a security certification or exhaustive penetration test.
 
+## 0.3.1 desktop setup security update
+
+A renewed Astra review confirmed an approval-dependent local P1 in 0.3.0:
+desktop setup could elevate a temporary script writable by the invoking user.
+Another process under that same account could replace the source before the
+privileged interpreter loaded it. A private directory did not prevent
+same-user replacement. No remote exploit was established.
+
+Automatic elevation has been removed. Sleeper never requests UAC or polkit
+approval, runs pkexec, or elevates temporary scripts. Inspection and permitted
+setters use the existing process token. Permission failures direct users to
+separate native OS configuration, preserving uncertainty about partial changes.
+Do not run the whole app as administrator or root. This closes the reported
+privilege transition without adding an installed privileged helper.
+
+The review also identified a P2: a fresh Windows inspection discarded a known
+pending restart advisory. Valid reports now retain that advisory by GUID and
+canonical MAC across backend instances in the same process, including partial
+failure reports. History is bounded to 128 entries; eviction or a new process
+means unknown activation. Stored Magic Packet configuration never establishes
+that the driver activated it. The UI labels the setting and advisory accordingly.
+The operation also returns its validated original identity independently of
+current adapter enumeration, so disappearance after a successful setter does
+not erase the advisory. Both disappearance regressions failed before that fix.
+A final Astra max source review confirmed both findings closed, with no new
+confirmed P1/P2 in the supplied scope. It did not independently rerun tests or
+verify privileged mutation, driver activation or hardware wake.
+
+Primary verification passed all 107 Flutter tests and analysis. Windows
+PowerShell fixtures cover ordinary-token setters, idempotence, denial and
+partial changes without changing real adapters. Live ordinary Windows
+inspection and an already-configured Enable operation passed on this PC.
+Nine additional real-loopback network probes passed, including body deadlines,
+slot recovery, restart with a changed key, bind conflict and send failure.
+Their UDP operation was mocked; they do not establish hardware wake.
+
+An [OSV advisory lookup](https://google.github.io/osv.dev/post-v1-querybatch/)
+returned no matches for 145 exact public package/version coordinates from the
+resolved Pub graph, Android release runtime graph and Go 1.27.3 standard
+library. This checks known records, not exploit reachability or all SDK,
+native-binary, firmware and supply-chain risks. Dependency versions were not
+changed. The earlier 0.3.0 release notes now warn against its automatic elevation.
+
 ## Confirmed finding and fix
 
 **P2: unauthenticated traffic could consume the shared wake quota.** Android charged its 30-request quota before authentication. Desktop charged its 60-request quota before JSON/HMAC/replay validation. A reachable peer without the pairing key could temporarily deny legitimate wakes.

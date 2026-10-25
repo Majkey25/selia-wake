@@ -196,9 +196,14 @@ class SleeperAdapter {
   final String broadcast;
   final TargetConnection connection;
   final bool? wakeEnabled;
+
+  /// On Windows this is the stored driver property, not confirmed activation.
   final bool? magicPacketEnabled;
   final bool? supportsWake;
   final String detail;
+
+  /// A known pending change advisory. False does not establish activation or
+  /// prove that an adapter restart has occurred.
   final bool restartRequired;
 
   factory SleeperAdapter.fromLinux({
@@ -277,7 +282,7 @@ class SleeperAdapter {
     );
   }
 
-  SleeperAdapter _withOperation(SleeperAdapter operation) => SleeperAdapter(
+  SleeperAdapter _withPendingRestart() => SleeperAdapter(
     id: id,
     name: name,
     description: description,
@@ -288,8 +293,9 @@ class SleeperAdapter {
     wakeEnabled: wakeEnabled,
     magicPacketEnabled: magicPacketEnabled,
     supportsWake: supportsWake,
-    detail: operation.restartRequired ? '$detail ${operation.detail}' : detail,
-    restartRequired: restartRequired || operation.restartRequired,
+    detail:
+        '$detail This app observed the stored Magic Packet setting change without restarting the adapter. Its effect remains unverified; this advisory is retained for this adapter identity during this app session.',
+    restartRequired: true,
   );
 }
 
@@ -414,18 +420,74 @@ bool? _reportBool(Map<String, Object?> data, String key) {
 }
 
 class SleeperFailure implements Exception {
-  const SleeperFailure(this.message, {bool completionUncertain = false})
-    : _completionUncertain = completionUncertain;
+  const SleeperFailure(this.message);
 
   final String message;
-  final bool _completionUncertain;
 
   @override
   String toString() => message;
 }
 
 class Sleeper {
+  Sleeper({
+    Future<ProcessResult> Function(String, List<String>)? windowsCommand,
+  }) : _windowsCommand = windowsCommand;
+
+  // Tests replace only the process boundary, retaining report validation and
+  // operation sequencing without invoking real adapter commands.
+  final Future<ProcessResult> Function(String, List<String>)? _windowsCommand;
+
+  // Retain only known advisories, across page/backend instances in this app
+  // session. A fresh process has no history; inspection cannot confirm activation.
+  static final _pendingWindowsRestarts = <(String, String)>{};
+
   static bool get supported => Platform.isWindows || Platform.isLinux;
+
+  SleeperReport _retainWindowsAdvisories(Object? value) {
+    // Validate the complete snapshot before it can affect session history.
+    final report = SleeperReport.fromWindowsJson(value);
+    final records = <(String, String)>[
+      for (final adapter in report.adapters)
+        if (adapter.restartRequired) (adapter.id, _canonicalMac(adapter.mac)),
+    ];
+    final pending = value is Map<String, Object?>
+        ? value['pendingRestart']
+        : null;
+    if (pending != null) {
+      if (pending is! Map<String, Object?> ||
+          pending.length != 2 ||
+          !pending.containsKey('id') ||
+          !pending.containsKey('mac')) {
+        throw _invalidReport;
+      }
+      final id = _canonicalGuid(_reportString(pending, 'id', 38));
+      final mac = _reportString(pending, 'mac', 17);
+      if (id == null || !_validMac(mac)) throw _invalidReport;
+      records.add((id, _canonicalMac(mac)));
+    }
+    for (final record in records) {
+      _pendingWindowsRestarts.add(record);
+      if (_pendingWindowsRestarts.length > 128) {
+        // Eviction returns old devices to unknown, never confirmed activation.
+        _pendingWindowsRestarts.remove(_pendingWindowsRestarts.first);
+      }
+    }
+    return SleeperReport(
+      machineName: report.machineName,
+      sleepStates: report.sleepStates,
+      adapters: List.unmodifiable(
+        report.adapters.map(
+          (adapter) =>
+              _pendingWindowsRestarts.contains((
+                adapter.id,
+                _canonicalMac(adapter.mac),
+              ))
+              ? adapter._withPendingRestart()
+              : adapter,
+        ),
+      ),
+    );
+  }
 
   Future<SleeperReport> inspect() async {
     if (Platform.isWindows) return _windows('Inspect');
@@ -487,32 +549,34 @@ class Sleeper {
     final script = File(
       '${directory.path}${Platform.pathSeparator}windows-wake.ps1',
     );
-    var cleanupSafe = true;
     try {
       await script.writeAsBytes(
         asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes),
         flush: true,
       );
       Future<SleeperReport> call(String requestedAction) async {
-        final result = await _run(
-          executable,
-          [
-            '-NoProfile',
-            '-NonInteractive',
-            '-WindowStyle',
-            'Hidden',
-            '-ExecutionPolicy',
-            'Bypass',
-            '-File',
-            script.path,
-            '-Action',
-            requestedAction,
-            if (adapterId != null) ...['-AdapterId', adapterId],
-          ],
-          timeout: requestedAction == 'Enable'
-              ? const Duration(minutes: 3)
-              : const Duration(seconds: 90),
-        );
+        final arguments = <String>[
+          '-NoProfile',
+          '-NonInteractive',
+          '-WindowStyle',
+          'Hidden',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-File',
+          script.path,
+          '-Action',
+          requestedAction,
+          if (adapterId != null) ...['-AdapterId', adapterId],
+        ];
+        final timeout = requestedAction == 'Enable'
+            ? const Duration(minutes: 3)
+            : const Duration(seconds: 90);
+        final command = _windowsCommand;
+        final result = command == null
+            ? await _run(executable, arguments, timeout: timeout)
+            : _CommandResult.fromProcessResult(
+                await command(executable, arguments).timeout(timeout),
+              );
         Object? data;
         try {
           data = jsonDecode(result.stdout.trim());
@@ -521,15 +585,25 @@ class Sleeper {
             'Windows wake inspection returned invalid JSON (exit ${result.exitCode}).',
           );
         }
-        final error = data is Map<String, dynamic> ? data['error'] : null;
-        if (result.exitCode != 0 || error != null) {
+        final error = data is Map<String, Object?> ? data['error'] : null;
+        if (result.exitCode != 0 ||
+            (data is Map<String, Object?> && data.containsKey('error'))) {
+          if (data is Map<String, Object?>) {
+            try {
+              // A failed ordinary-token operation may already have stored a
+              // property. Keep a valid advisory before surfacing the failure.
+              _retainWindowsAdvisories({...data}..remove('error'));
+            } on FormatException {
+              // Incomplete error reports cannot establish pending history.
+            }
+          }
           throw SleeperFailure(
             error is String && error.isNotEmpty
                 ? error
-                : 'Windows wake $requestedAction failed (exit ${result.exitCode}). Approval may have been denied or cancelled.',
+                : 'Windows wake $requestedAction failed (exit ${result.exitCode}). Wake configuration requiring additional permissions must be performed separately in native Windows settings; this app does not request administrator permission automatically.',
           );
         }
-        return SleeperReport.fromWindowsJson(data);
+        return _retainWindowsAdvisories(data);
       }
 
       var report = await call('Inspect');
@@ -540,7 +614,8 @@ class Sleeper {
           );
         }
         final enabled = await call('Enable');
-        // Read again after the synchronous worker, retaining its restart flag.
+        // Read again after the ordinary-token command. Session history retains
+        // known pending advisories even though a fresh query cannot report them.
         report = await call('Inspect');
         final operation = enabled.adapters
             .where((a) => a.id == adapterId)
@@ -550,15 +625,6 @@ class Sleeper {
             'The selected adapter disappeared during wake configuration. Inspect again.',
           );
         }
-        report = SleeperReport(
-          machineName: report.machineName,
-          sleepStates: report.sleepStates,
-          adapters: List.unmodifiable(
-            report.adapters.map(
-              (a) => a.id == adapterId ? a._withOperation(operation) : a,
-            ),
-          ),
-        );
         final selected = report.adapters
             .where((a) => a.id == adapterId)
             .firstOrNull;
@@ -575,21 +641,13 @@ class Sleeper {
         tailscaleIp: await _tailscaleIp(),
         adapters: report.adapters,
       );
-    } on SleeperFailure catch (error) {
-      // Killing an unelevated waiter cannot prove its UAC worker has exited.
-      // On interruption retain the source, including while UAC is pending.
-      if (error._completionUncertain) cleanupSafe = false;
-      rethrow;
     } finally {
-      if (cleanupSafe) {
-        // Only these two owned paths are removed; never recursively delete.
-        try {
-          if (await script.exists()) await script.delete();
-          await directory.delete();
-        } on FileSystemException {
-          // A live elevated worker holds the reviewed source against deletion.
-          // Retaining it is safer than retrying cleanup before worker completion.
-        }
+      // Only these two owned paths are removed; never recursively delete.
+      try {
+        if (await script.exists()) await script.delete();
+        await directory.delete();
+      } on FileSystemException {
+        // Cleanup is best effort if an owned path is still in use.
       }
     }
   }
@@ -721,118 +779,63 @@ class Sleeper {
     final asset = await rootBundle.load('assets/scripts/linux-wake.sh');
     final directory = await Directory('/tmp').createTemp('seliawake-sleeper-');
     final script = File('${directory.path}/linux-wake.sh');
-    var cleanupSafe = true;
     try {
-      // Refuse to expose reviewed worker source through a non-private directory.
+      // Keep the ordinary-privilege helper source private.
       final stat = await directory.stat();
       if (stat.type != FileSystemEntityType.directory ||
           (stat.mode & 0x1ff) != 0x1c0) {
         throw const SleeperFailure(
-          'A private Linux worker directory could not be created. No wake change was made.',
+          'A private Linux helper directory could not be created. No wake change was made.',
         );
       }
       await script.writeAsBytes(
         asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes),
         flush: true,
       );
-      Future<_CommandResult> call(String operation, {String? privilege}) async {
-        final result = await _run(
-          privilege ?? shell,
-          [
-            if (privilege != null) shell,
-            '--noprofile',
-            '--norc',
-            '-p',
-            script.path,
-            operation,
-            adapterId,
-            expectedMac,
-            '$expectedIndex',
-          ],
-          timeout: privilege == null
-              ? const Duration(seconds: 10)
-              : const Duration(minutes: 2),
+      // The helper revalidates sysfs immediately before ordinary-token ethtool.
+      // No shell command string or privilege request is generated.
+      final result = await _run(shell, [
+        '--noprofile',
+        '--norc',
+        '-p',
+        script.path,
+        'enable',
+        adapterId,
+        expectedMac,
+        '$expectedIndex',
+      ]);
+      if (result.exitCode == 65) {
+        throw const SleeperFailure(
+          'The selected physical adapter changed or disappeared. Inspect again.',
         );
-        // An externally signalled pkexec waiter may also leave its worker alive.
-        if (privilege != null && result.exitCode < 0) cleanupSafe = false;
-        if (result.exitCode == 65) {
-          throw const SleeperFailure(
-            'The selected physical adapter changed or disappeared. Inspect again.',
-          );
-        }
-        return result;
       }
-
-      // The same helper revalidates sysfs immediately before ethtool, including
-      // after pkexec has obtained approval. No shell command string is generated.
-      var result = await call('enable');
-      String? pkexec;
       if (result.exitCode != 0 && _permissionDenied(result)) {
-        pkexec = await _linuxExecutable('pkexec');
-        if (pkexec == null) {
-          throw const SleeperFailure(
-            'Wake configuration requires privilege, but pkexec is unavailable. No elevated change was made.',
-          );
-        }
-        result = await call('enable', privilege: pkexec);
+        throw const SleeperFailure(
+          'Wake configuration was denied by the current permissions. Native Linux wake configuration must be performed separately; this app does not request administrator permission automatically. Settings may have partially changed; inspect again. $_linuxPersistence',
+        );
       }
       if (result.exitCode != 0) {
         throw SleeperFailure(
-          'ethtool could not enable Magic Packet wake (exit ${result.exitCode}). Approval may have been denied or cancelled, or the driver may reject this mode. Inspect again; partial changes cannot be excluded. $_linuxPersistence',
+          'ethtool could not enable Magic Packet wake (exit ${result.exitCode}); the driver may reject this mode. Configuration requiring additional permissions must be performed separately in native Linux tools. Inspect again; partial changes cannot be excluded. $_linuxPersistence',
         );
       }
       report = await _inspectLinux();
-      var fresh = report.selectedAdapter(adapterId, expectedMac: expectedMac);
+      final fresh = report.selectedAdapter(adapterId, expectedMac: expectedMac);
       await verifyIdentity();
-      // WOL_GET may itself require CAP_NET_ADMIN. Do not mistake a denied read
-      // for a failed setting or claim success from the setter's exit code alone.
-      if (fresh.magicPacketEnabled == null) {
-        pkexec ??= await _linuxExecutable('pkexec');
-        if (pkexec != null) {
-          final query = await call('query', privilege: pkexec);
-          await verifyIdentity();
-          if (query.exitCode == 0) {
-            fresh = SleeperAdapter.fromLinux(
-              id: fresh.id,
-              description: fresh.description,
-              mac: fresh.mac,
-              ip: fresh.ip,
-              prefixLength: (await _linuxPrefixes()).$1[adapterId]?[fresh.ip],
-              connection: fresh.connection,
-              ethtoolOutput: query.stdout,
-              detail: 'Wake modes were read through pkexec after the change.',
-            );
-            final verified = fresh;
-            report = SleeperReport(
-              machineName: report.machineName,
-              sleepStates: report.sleepStates,
-              tailscaleIp: report.tailscaleIp,
-              adapters: List.unmodifiable(
-                report.adapters.map((a) => a.id == adapterId ? verified : a),
-              ),
-            );
-          }
-        }
-      }
-      await verifyIdentity();
+      // A denied read remains unknown; the setter's exit code is not evidence
+      // that Magic Packet wake is enabled, and inspection never elevates.
       if (fresh.magicPacketEnabled != true || fresh.wakeEnabled != true) {
         throw const SleeperFailure(
-          'The change command completed, but a fresh OS query did not confirm Magic Packet wake. Settings may have changed; inspect again. $_linuxPersistence',
+          'The change command completed, but a fresh OS query did not confirm Magic Packet wake. Settings may have changed; inspect again. Inspection or configuration requiring additional permissions must be performed separately in native Linux tools. $_linuxPersistence',
         );
       }
       return report;
-    } on SleeperFailure catch (error) {
-      // Killing pkexec's waiter does not prove the approved worker has exited.
-      if (error._completionUncertain) cleanupSafe = false;
-      rethrow;
     } finally {
-      if (cleanupSafe) {
-        try {
-          if (await script.exists()) await script.delete();
-          await directory.delete();
-        } on FileSystemException {
-          // Retain owned source if cleanup cannot complete; never delete a tree.
-        }
+      try {
+        if (await script.exists()) await script.delete();
+        await directory.delete();
+      } on FileSystemException {
+        // Cleanup is best effort; never delete a tree.
       }
     }
   }
@@ -999,6 +1002,8 @@ bool _permissionDenied(_CommandResult result) => RegExp(
 
 class _CommandResult {
   const _CommandResult(this.exitCode, this.stdout, this.stderr);
+  _CommandResult.fromProcessResult(ProcessResult result)
+    : this(result.exitCode, result.stdout as String, result.stderr as String);
   final int exitCode;
   final String stdout;
   final String stderr;
@@ -1010,7 +1015,6 @@ Future<String> _readOutput(Stream<List<int>> stream) async {
     if (bytes.length + chunk.length > 1024 * 1024) {
       throw const SleeperFailure(
         'The OS command exceeded its bounded output limit.',
-        completionUncertain: true,
       );
     }
     bytes.addAll(chunk);
@@ -1056,14 +1060,12 @@ Future<_CommandResult> _run(
     }
     if (error is TimeoutException) {
       throw const SleeperFailure(
-        'The OS command timed out. Any requested change may still be completing; inspect again before relying on it. The reviewed Windows source is retained if worker completion is uncertain.',
-        completionUncertain: true,
+        'The OS command timed out. Any requested setting may have partially changed; inspect again before relying on it.',
       );
     }
     if (error is SleeperFailure) rethrow;
     throw const SleeperFailure(
       'The OS command response could not be read. Any requested change must be inspected again.',
-      completionUncertain: true,
     );
   }
 }

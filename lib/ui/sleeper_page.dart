@@ -220,14 +220,14 @@ class _SleeperPageState extends State<SleeperPage> {
                       child: Text(
                         '${s.text('OS reports wake support', 'Systém hlásí podporu probouzení')}: ${status(adapter.supportsWake)}\n'
                         '${s.text('Wake enabled', 'Probouzení povoleno')}: ${status(adapter.wakeEnabled)}\n'
-                        'Magic Packet: ${status(adapter.magicPacketEnabled)}\n${adapter.detail}',
+                        '${s.text('Magic Packet setting', 'Nastavení Magic Packet')}: ${status(adapter.magicPacketEnabled)}\n${adapter.detail}',
                       ),
                     ),
                     if (adapter.restartRequired)
                       Text(
                         s.text(
-                          'The driver reports a restart is required. Restart manually when ready. No restart was requested by this app.',
-                          'Ovladač hlásí nutnost restartu. Restartujte ručně, až budete připraveni. Aplikace restart nevyžádala.',
+                          'The stored setting changed without an adapter restart. Its effect is unverified. Restart manually when ready.',
+                          'Uložené nastavení se změnilo bez restartu adaptéru. Jeho účinek není ověřený. Restartujte ručně, až budete připraveni.',
                         ),
                       ),
                     const SizedBox(height: 16),
@@ -264,8 +264,8 @@ class _SleeperPageState extends State<SleeperPage> {
                   const SizedBox(height: 16),
                   Text(
                     s.text(
-                      'These values describe OS settings only. BIOS, firmware and hardware wake are not verified. Enable wake changes only the selected adapter and may request administrator permission. On Linux, changes may last only until restart. This app does not restart or put the PC to sleep.',
-                      'Tyto údaje popisují pouze nastavení systému. BIOS, firmware a skutečné probuzení nejsou ověřené. Povolení probouzení mění pouze vybraný adaptér a může vyžádat oprávnění správce. V Linuxu mohou změny platit jen do restartu. Aplikace počítač nerestartuje ani neuspává.',
+                      'These values describe OS settings only. BIOS, driver activation and hardware wake are unverified. Enable wake uses existing permissions and changes only the selected adapter. If access is denied, configure wake separately in OS settings. This app does not request administrator access. On Linux, changes may last only until restart. The app never restarts or sleeps the PC.',
+                      'Tyto údaje popisují pouze nastavení systému. BIOS, aktivace ovladače a skutečné probuzení nejsou ověřené. Povolení probouzení využívá stávající oprávnění a mění pouze vybraný adaptér. Při zamítnutí přístupu nastavte probouzení samostatně v systému. Aplikace nevyžaduje přístup správce. V Linuxu mohou změny platit jen do restartu. Aplikace počítač nikdy nerestartuje ani neuspává.',
                     ),
                     style: theme.textTheme.bodySmall,
                   ),

@@ -258,3 +258,42 @@ Google Play internal-track availability must be checked in Play Console separate
   directory was expected; device checks used ADB instead. Real privileged Linux
   changes, a completed GUI Enable wake action, Sleeper QR export, ESP32 flashing,
   sustained background operation and successful physical wake remain unverified.
+
+## 25 October 2026, 0.3.1 security update
+
+* The requested Astra max, Astra xhigh, Sol max and Sol xhigh tasks were run.
+  Hardware research found no confirmed software fix for this PC's failed
+  Wi-Fi/S3 wake. Its reported arming, S3 capability and stored Magic Packet
+  setting do not demonstrate wake. No sleep, restart, adapter restart or
+  driver/firmware change was performed during this follow-up.
+* Sol max ran nine real-loopback network probes covering body deadlines, slot
+  reuse, stop/restart with partial requests and key rotation, bind conflict,
+  peer EOF and send failure. They passed; temporary probes were removed.
+  The original three relay tests passed again. Fatal listener error was not
+  induced; the probes did not send real UDP.
+* Sol xhigh ran all 38 home widget tests successfully and found no confirmed
+  P1/P2 in the bounded QR/setup source flow. The installed Windows GUI displayed
+  the correct Sleeper target QR/link and its non-secret network details.
+  Actual optical scanning remains separate from export and parser tests.
+* Astra xhigh confirmed the writable-helper elevation P1 and lost restart
+  advisory P2. Sol max removed automatic elevation and added regressions.
+  Primary bounded session history to 128 records. All 107 Flutter tests and
+  analysis passed. Fixture setters did not change actual adapters.
+  A follow-up review found one remaining disappearance path; two regressions
+  failed before preserving the original pending identity outside enumeration,
+  then passed after the fix. Malformed detached identities are rejected before
+  changing history.
+  The final Astra max source review confirmed both findings closed and no new
+  confirmed P1/P2 in that scope; it did not independently rerun the tests.
+* Updated Windows PowerShell Inspect and idempotent Enable returned exit 0
+  under the ordinary token. Wi-Fi arming and the stored Magic Packet setting
+  were already enabled; no administrator request or setting change was needed.
+  Fresh inspection explicitly reports activation/history as unknown.
+* OSV returned no advisory matches for 145 resolved Pub, Android Maven and
+  Go stdlib package/version coordinates. Pub resolution reported no advisories
+  and did not change the lockfile. This is not a complete dependency audit.
+* Tailscale policy inspection is waiting for account sign-in. The preview
+  snapshot timed out twice; the local browser reached the login page.
+  No tailnet policy, firewall, router, RDP authentication or account setting
+  was changed. The Device panel still cannot start due to its retained daemon
+  lock format; ADB remains available. WSL is not installed on this host.

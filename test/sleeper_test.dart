@@ -44,6 +44,23 @@ Map<String, Object?> _windowsReport() => {
 Map<String, Object?> _windowsAdapter(Map<String, Object?> report) =>
     (report['adapters']! as List<Object?>).single! as Map<String, Object?>;
 
+Map<String, Object?> _configuredWindowsReport(
+  int identity, {
+  String mac = '02-AA-BB-CC-DD-EE',
+  bool pending = false,
+}) {
+  final report = _windowsReport();
+  _windowsAdapter(report).addAll({
+    'id':
+        '12345678-1234-1234-1234-${identity.toRadixString(16).padLeft(12, '0')}',
+    'mac': mac,
+    'wakeEnabled': true,
+    'magicPacketEnabled': true,
+    'restartRequired': pending,
+  });
+  return report;
+}
+
 SleeperAdapter _linuxAdapter({
   String mac = '02:11:22:33:44:55',
   String ip = '192.168.1.20',
@@ -66,6 +83,8 @@ SleeperReport _linuxReport(SleeperAdapter adapter) =>
     SleeperReport(machineName: 'fixture', sleepStates: '', adapters: [adapter]);
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('TargetSetup', () {
     test(
       'exports only the versioned network setup and imports every connection',
@@ -391,6 +410,345 @@ void main() {
     );
   });
 
+  group('Windows helper with fixture OS commands', () {
+    late _WindowsWakeFixture fixture;
+
+    setUp(() async => fixture = await _WindowsWakeFixture.create());
+    tearDown(() async => fixture.dispose());
+
+    test('inspects stored settings without implying activation', () async {
+      final (result, trace) = await fixture.run(
+        'configured',
+        action: 'Inspect',
+      );
+      expect(result.exitCode, 0, reason: '${result.stderr}');
+      expect(trace, isEmpty);
+      final adapter = _windowsAdapter(
+        jsonDecode(result.stdout as String) as Map<String, Object?>,
+      );
+      expect(adapter['magicPacketEnabled'], isTrue);
+      expect(adapter['restartRequired'], isFalse);
+      expect(adapter['detail'], contains('activation'));
+      expect(adapter['detail'], contains('unknown'));
+    });
+
+    test(
+      'enables with the current token without an administrator role gate',
+      () async {
+        final (result, trace) = await fixture.run('enable');
+        expect(result.exitCode, 0, reason: '${result.stdout} ${result.stderr}');
+        expect(trace, ['arm', 'magic']);
+        final adapter = _windowsAdapter(
+          jsonDecode(result.stdout as String) as Map<String, Object?>,
+        );
+        expect(adapter['wakeEnabled'], isTrue);
+        expect(adapter['magicPacketEnabled'], isTrue);
+        expect(adapter['restartRequired'], isTrue);
+      },
+    );
+
+    test(
+      'already configured enable is idempotent without any setter',
+      () async {
+        final (result, trace) = await fixture.run('configured');
+        expect(result.exitCode, 0, reason: '${result.stdout} ${result.stderr}');
+        expect(trace, isEmpty);
+      },
+    );
+
+    test(
+      'denied setter reports manual OS configuration without elevation',
+      () async {
+        final (result, trace) = await fixture.run('deny-arm');
+        expect(result.exitCode, 1, reason: '${result.stderr}');
+        expect(trace, ['arm']);
+        final report =
+            jsonDecode(result.stdout as String) as Map<String, Object?>;
+        expect(report['error'], contains('separately'));
+        expect(report['error'], contains('does not request administrator'));
+      },
+    );
+
+    test(
+      'denial after arming preserves the partial state and uncertainty',
+      () async {
+        final (result, trace) = await fixture.run('deny-magic');
+        expect(result.exitCode, 1, reason: '${result.stderr}');
+        expect(trace, ['arm', 'magic']);
+        final report =
+            jsonDecode(result.stdout as String) as Map<String, Object?>;
+        expect(_windowsAdapter(report)['wakeEnabled'], isTrue);
+        expect(_windowsAdapter(report)['magicPacketEnabled'], isFalse);
+        expect(report['error'], contains('may have changed settings'));
+        expect(report['error'], contains('separately'));
+      },
+    );
+
+    test(
+      'a setter that changes the property before failing reports pending state',
+      () async {
+        final (result, trace) = await fixture.run('partial-magic');
+        expect(result.exitCode, 1, reason: '${result.stderr}');
+        expect(trace, ['magic']);
+        final report =
+            jsonDecode(result.stdout as String) as Map<String, Object?>;
+        expect(_windowsAdapter(report)['magicPacketEnabled'], isTrue);
+        expect(_windowsAdapter(report)['restartRequired'], isTrue);
+        expect(report['error'], contains('may have changed settings'));
+      },
+    );
+
+    test(
+      'retains original identity if the adapter disappears after the setter',
+      () async {
+        final (result, trace) = await fixture.run('disappear-after-magic');
+        expect(result.exitCode, 1, reason: '${result.stderr}');
+        expect(trace, ['arm', 'magic']);
+        final report =
+            jsonDecode(result.stdout as String) as Map<String, Object?>;
+        expect(report['adapters'], isEmpty);
+        expect(report['pendingRestart'], {
+          'id': '12345678-1234-1234-1234-123456789abc',
+          'mac': '02-11-22-33-44-55',
+        });
+      },
+    );
+  }, skip: Platform.isWindows ? false : 'Windows PowerShell is unavailable.');
+
+  group('Windows pending configuration history', () {
+    test(
+      'rejects malformed detached pending identities before retaining them',
+      () async {
+        final original = _configuredWindowsReport(7);
+        final identity = _windowsAdapter(original);
+        for (final pending in <Object?>[
+          false,
+          {'id': 'invalid', 'mac': identity['mac']},
+          {'id': identity['id'], 'mac': '01:11:22:33:44:55'},
+          {'id': identity['id'], 'mac': identity['mac'], 'extra': true},
+        ]) {
+          final commands = _WindowsCommands([
+            ('Inspect', 0, original),
+            (
+              'Enable',
+              1,
+              {
+                ...original,
+                'adapters': <Object?>[],
+                'pendingRestart': pending,
+                'error': 'Invalid operation report.',
+              },
+            ),
+            ('Inspect', 0, original),
+          ]);
+          await expectLater(
+            Sleeper(windowsCommand: commands.run).enableWake(
+              identity['id']! as String,
+              expectedMac: identity['mac']! as String,
+            ),
+            throwsA(isA<SleeperFailure>()),
+          );
+          expect(
+            (await Sleeper(
+              windowsCommand: commands.run,
+            ).inspect()).adapters.single.restartRequired,
+            isFalse,
+          );
+          expect(commands.responses, isEmpty);
+          await commands.expectScriptsRemoved();
+        }
+      },
+    );
+
+    test(
+      'retains pending identity through disappearance and later refresh',
+      () async {
+        final original = _configuredWindowsReport(6);
+        final identity = _windowsAdapter(original);
+        final commands = _WindowsCommands([
+          ('Inspect', 0, original),
+          (
+            'Enable',
+            1,
+            {
+              ...original,
+              'adapters': <Object?>[],
+              'pendingRestart': {'id': identity['id'], 'mac': identity['mac']},
+              'error': 'Adapter disappeared after storing the setting.',
+            },
+          ),
+          ('Inspect', 0, original),
+        ]);
+        await expectLater(
+          Sleeper(windowsCommand: commands.run).enableWake(
+            identity['id']! as String,
+            expectedMac: identity['mac']! as String,
+          ),
+          throwsA(isA<SleeperFailure>()),
+        );
+        expect(
+          (await Sleeper(
+            windowsCommand: commands.run,
+          ).inspect()).adapters.single.restartRequired,
+          isTrue,
+        );
+        expect(commands.responses, isEmpty);
+        await commands.expectScriptsRemoved();
+      },
+    );
+
+    test(
+      'bounds advisory history without claiming old settings activated',
+      () async {
+        final commands = _WindowsCommands([
+          for (var i = 1000; i <= 1128; i++)
+            ('Inspect', 0, _configuredWindowsReport(i, pending: true)),
+          ('Inspect', 0, _configuredWindowsReport(1000)),
+          ('Inspect', 0, _configuredWindowsReport(1128)),
+        ]);
+        final sleeper = Sleeper(windowsCommand: commands.run);
+        for (var i = 1000; i <= 1128; i++) {
+          expect(
+            (await sleeper.inspect()).adapters.single.restartRequired,
+            isTrue,
+          );
+        }
+        expect(
+          (await sleeper.inspect()).adapters.single.restartRequired,
+          isFalse,
+        );
+        expect(
+          (await sleeper.inspect()).adapters.single.restartRequired,
+          isTrue,
+        );
+        expect(commands.responses, isEmpty);
+        await commands.expectScriptsRemoved();
+      },
+    );
+
+    test(
+      'retains a pending advisory across refresh and new Sleeper instances',
+      () async {
+        final fresh = _configuredWindowsReport(1);
+        final id = _windowsAdapter(fresh)['id']! as String;
+        final commands = _WindowsCommands([
+          ('Inspect', 0, fresh),
+          ('Enable', 0, _configuredWindowsReport(1, pending: true)),
+          ('Inspect', 0, fresh),
+          ('Inspect', 0, fresh),
+          ('Inspect', 0, _configuredWindowsReport(1, mac: '02:aa:bb:cc:dd:ee')),
+        ]);
+        final sleeper = Sleeper(windowsCommand: commands.run);
+        final enabled = await sleeper.enableWake(
+          id,
+          expectedMac: '02:aa:bb:cc:dd:ee',
+        );
+        expect(enabled.adapters.single.restartRequired, isTrue);
+        expect(
+          (await sleeper.inspect()).adapters.single.restartRequired,
+          isTrue,
+        );
+        final reopened = await Sleeper(windowsCommand: commands.run).inspect();
+        expect(reopened.adapters.single.restartRequired, isTrue);
+        expect(reopened.adapters.single.magicPacketEnabled, isTrue);
+        expect(reopened.adapters.single.detail, contains('without restarting'));
+        expect(reopened.adapters.single.detail, contains('unverified'));
+        expect(commands.responses, isEmpty);
+        await commands.expectScriptsRemoved();
+      },
+    );
+
+    test('remembers valid partial-failure reports before throwing', () async {
+      final fresh = _configuredWindowsReport(2);
+      final id = _windowsAdapter(fresh)['id']! as String;
+      final commands = _WindowsCommands([
+        ('Inspect', 0, fresh),
+        (
+          'Enable',
+          1,
+          {
+            ..._configuredWindowsReport(2, pending: true),
+            'error': 'Permission denied after storing the setting.',
+          },
+        ),
+        ('Inspect', 0, fresh),
+      ]);
+      await expectLater(
+        Sleeper(
+          windowsCommand: commands.run,
+        ).enableWake(id, expectedMac: '02:aa:bb:cc:dd:ee'),
+        throwsA(isA<SleeperFailure>()),
+      );
+      final report = await Sleeper(windowsCommand: commands.run).inspect();
+      expect(report.adapters.single.restartRequired, isTrue);
+      expect(commands.responses, isEmpty);
+      await commands.expectScriptsRemoved();
+    });
+
+    test('keys pending history by both GUID and canonical MAC', () async {
+      final original = _configuredWindowsReport(3);
+      final id = _windowsAdapter(original)['id']! as String;
+      final commands = _WindowsCommands([
+        ('Inspect', 0, original),
+        ('Enable', 0, _configuredWindowsReport(3, pending: true)),
+        ('Inspect', 0, original),
+        ('Inspect', 0, _configuredWindowsReport(3, mac: '02-AA-BB-CC-DD-FF')),
+        ('Inspect', 0, _configuredWindowsReport(4)),
+        ('Inspect', 0, original),
+      ]);
+      await Sleeper(
+        windowsCommand: commands.run,
+      ).enableWake(id, expectedMac: '02:aa:bb:cc:dd:ee');
+      expect(
+        (await Sleeper(
+          windowsCommand: commands.run,
+        ).inspect()).adapters.single.restartRequired,
+        isFalse,
+      );
+      expect(
+        (await Sleeper(
+          windowsCommand: commands.run,
+        ).inspect()).adapters.single.restartRequired,
+        isFalse,
+      );
+      expect(
+        (await Sleeper(
+          windowsCommand: commands.run,
+        ).inspect()).adapters.single.restartRequired,
+        isTrue,
+      );
+      expect(commands.responses, isEmpty);
+    });
+
+    test(
+      'an invalid partial-failure report cannot poison pending history',
+      () async {
+        final original = _configuredWindowsReport(5);
+        final invalid = _configuredWindowsReport(5, pending: true);
+        (invalid['adapters']! as List<Object?>).add({'id': 'invalid'});
+        final commands = _WindowsCommands([
+          ('Inspect', 0, original),
+          ('Enable', 1, {...invalid, 'error': 'Permission denied.'}),
+          ('Inspect', 0, original),
+        ]);
+        await expectLater(
+          Sleeper(windowsCommand: commands.run).enableWake(
+            _windowsAdapter(original)['id']! as String,
+            expectedMac: '02:aa:bb:cc:dd:ee',
+          ),
+          throwsA(isA<SleeperFailure>()),
+        );
+        expect(
+          (await Sleeper(
+            windowsCommand: commands.run,
+          ).inspect()).adapters.single.restartRequired,
+          isFalse,
+        );
+        expect(commands.responses, isEmpty);
+      },
+    );
+  }, skip: Platform.isWindows ? false : 'Windows backend requires Windows.');
+
   group('Linux report', () {
     test('rejects an interface name reused after the displayed selection', () {
       final displayed = _linuxAdapter();
@@ -544,15 +902,21 @@ void main() {
       },
     );
 
-    test(
-      'rejects a MAC replaced while privilege approval was pending',
-      () async {
-        await fixture.write('address', '02:aa:bb:cc:dd:ee');
-        final result = await fixture.check();
-        expect(result.exitCode, 65, reason: '${result.stderr}');
-        expect(result.stderr, contains('changed or disappeared'));
-      },
-    );
+    test('rejects a MAC replaced before the helper identity check', () async {
+      await fixture.write('address', '02:aa:bb:cc:dd:ee');
+      final result = await fixture.check();
+      expect(result.exitCode, 65, reason: '${result.stderr}');
+      expect(result.stderr, contains('changed or disappeared'));
+    });
+
+    test('accepts the maximum supported interface index', () async {
+      await fixture.write('ifindex', '2147483647');
+      await fixture.write('iflink', '2147483647');
+      final result = await fixture.check(
+        arguments: ['enable', 'enp1s0', '02:11:22:33:44:55', '2147483647'],
+      );
+      expect(result.exitCode, 0, reason: '${result.stderr}');
+    });
 
     test(
       'rejects a reused name and MAC with a different interface index',
@@ -677,8 +1041,8 @@ class _LinuxWakeFixture {
     }.entries) {
       await fixture.write(entry.key, entry.value);
     }
-    // Source the actual helper, then execute its post-approval validator against
-    // fixture files. No production setter, pkexec, or real sysfs is invoked.
+    // Source the actual helper, then execute its identity validator against
+    // fixture files. No production setter or real sysfs is invoked.
     await File('${root.path}/check.sh').writeAsString(r'''
 set -eu
 . "$1"
@@ -734,5 +1098,165 @@ linux_wake_check_identity "$sleeper_test_sysfs" "$2" "$3" "$4"
       await Directory('${root.path}/$suffix').delete();
     }
     await root.delete();
+  }
+}
+
+class _WindowsWakeFixture {
+  _WindowsWakeFixture(this.root);
+
+  final Directory root;
+
+  static Future<_WindowsWakeFixture> create() async {
+    final root = await Directory.systemTemp.createTemp(
+      'seliawake-windows-test-',
+    );
+    // Run the production functions and main body with fixture cmdlets. Every
+    // setter and process launch is intercepted, so no real adapter is touched.
+    await File('${root.path}/check.ps1').writeAsString(r'''
+param([string] $Source, [string] $Scenario, [string] $Action, [string] $TracePath)
+$ErrorActionPreference = 'Stop'
+$tokens = $null
+$errors = $null
+$ast = [Management.Automation.Language.Parser]::ParseFile($Source, [ref] $tokens, [ref] $errors)
+if ($errors.Count) { throw ($errors | Out-String) }
+foreach ($statement in $ast.EndBlock.Statements) {
+    if ($statement -is [Management.Automation.Language.FunctionDefinitionAst]) {
+        . ([scriptblock]::Create($statement.Extent.Text))
+    }
+}
+
+$script:scenario = $Scenario
+$script:armed = $Scenario -in @('configured', 'partial-magic')
+$script:magic = if ($Scenario -eq 'configured') { '1' } else { '0' }
+$script:trace = [Collections.Generic.List[string]]::new()
+$AdapterId = '12345678-1234-1234-1234-123456789abc'
+$ElevatedWorker = $false
+$script:deviceName = 'Fixture physical adapter'
+function Import-Module { }
+function New-Object([string] $TypeName) {
+    if ($TypeName -notlike 'Security.Principal.WindowsPrincipal*') { throw "Unexpected constructor: $TypeName" }
+    $principal = [pscustomobject]@{}
+    Add-Member -InputObject $principal -MemberType ScriptMethod -Name IsInRole -Value { param($Role) return $false }
+    return $principal
+}
+function Start-Process {
+    $script:trace.Add('elevation')
+    throw 'Process launch blocked by fixture.'
+}
+function Invoke-PowerCfg([string[]] $NativeArguments) {
+    if ($NativeArguments[0] -eq '/deviceenablewake') {
+        $script:trace.Add('arm')
+        if ($script:scenario -eq 'deny-arm') { throw [UnauthorizedAccessException]::new('Access is denied.') }
+        $script:armed = $true
+        return ''
+    }
+    if ($NativeArguments[0] -eq '/a') { return 'Standby (S3)' }
+    if ($NativeArguments[0] -ne '/devicequery') { throw 'Unexpected powercfg operation.' }
+    if ($NativeArguments[1] -ne 'wake_armed' -or $script:armed) { return $script:deviceName }
+    return ''
+}
+function Get-NetAdapter {
+    if ($script:scenario -eq 'disappear-after-magic' -and $script:magic -eq '1') { return }
+    return [pscustomobject]@{
+        InterfaceGuid = $AdapterId; InterfaceIndex = 7; HardwareInterface = $true
+        Virtual = $false; Status = 'Up'; InterfaceType = 6; NdisPhysicalMedium = 0
+        Name = 'Fixture Ethernet'; InterfaceDescription = 'Fixture Ethernet'
+        MacAddress = '02-11-22-33-44-55'; PnPDeviceID = 'FIXTURE\WAKE\1'; DriverProvider = 'Fixture'
+    }
+}
+function Get-NetIPAddress {
+    return [pscustomobject]@{
+        AddressState = 'Preferred'; SkipAsSource = $false; InterfaceIndex = 7
+        IPAddress = '192.168.1.20'; PrefixLength = 24
+    }
+}
+function Get-CimInstance {
+    return [pscustomobject]@{ DeviceID = 'FIXTURE\WAKE\1'; Name = $script:deviceName }
+}
+function Get-NetAdapterAdvancedProperty {
+    return [pscustomobject]@{
+        InstanceID = ([guid] $AdapterId).ToString('B') + '::*WakeOnMagicPacket'
+        RegistryKeyword = '*WakeOnMagicPacket'; RegistryValue = @($script:magic)
+    }
+}
+function Set-NetAdapterAdvancedProperty {
+    $script:trace.Add('magic')
+    if ($script:scenario -eq 'deny-magic') { throw [UnauthorizedAccessException]::new('Access is denied.') }
+    $script:magic = '1'
+    if ($script:scenario -eq 'partial-magic') { throw [UnauthorizedAccessException]::new('Access is denied after storing the property.') }
+}
+$body = ($ast.EndBlock.Statements | Where-Object {
+    $_ -isnot [Management.Automation.Language.FunctionDefinitionAst]
+} | ForEach-Object { $_.Extent.Text }) -join "`n"
+$body = '$PSCommandPath = $Source' + "`n" + $body
+try { . ([scriptblock]::Create($body)) }
+finally { [IO.File]::WriteAllText($TracePath, (ConvertTo-Json -InputObject @($script:trace) -Compress)) }
+''');
+    return _WindowsWakeFixture(root);
+  }
+
+  Future<(ProcessResult, List<Object?>)> run(
+    String scenario, {
+    String action = 'Enable',
+  }) async {
+    final result = await Process.run(
+      '${Platform.environment['SystemRoot']}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        '${root.path}/check.ps1',
+        '-Source',
+        File('assets/scripts/windows-wake.ps1').absolute.path,
+        '-Scenario',
+        scenario,
+        '-Action',
+        action,
+        '-TracePath',
+        '${root.path}/trace.json',
+      ],
+      runInShell: false,
+    ).timeout(const Duration(seconds: 20));
+    final trace =
+        jsonDecode(await File('${root.path}/trace.json').readAsString())
+            as List<Object?>;
+    return (result, trace);
+  }
+
+  Future<void> dispose() async {
+    for (final name in ['check.ps1', 'trace.json']) {
+      final file = File('${root.path}/$name');
+      if (await file.exists()) await file.delete();
+    }
+    await root.delete();
+  }
+}
+
+class _WindowsCommands {
+  _WindowsCommands(this.responses);
+
+  final List<(String, int, Map<String, Object?>)> responses;
+  final Set<String> scripts = {};
+
+  Future<ProcessResult> run(String executable, List<String> arguments) async {
+    expect(
+      executable,
+      '${Platform.environment['SystemRoot']}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+    );
+    final script = arguments[arguments.indexOf('-File') + 1];
+    expect(await File(script).exists(), isTrue);
+    scripts.add(script);
+    final response = responses.removeAt(0);
+    expect(arguments[arguments.indexOf('-Action') + 1], response.$1);
+    return ProcessResult(0, response.$2, jsonEncode(response.$3), '');
+  }
+
+  Future<void> expectScriptsRemoved() async {
+    for (final path in scripts) {
+      expect(await File(path).exists(), isFalse);
+      expect(await Directory(File(path).parent.path).exists(), isFalse);
+    }
   }
 }

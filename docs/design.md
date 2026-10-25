@@ -33,6 +33,8 @@ Pairing links and QR codes carry the same validated Tailscale IPv4, target name,
 
 Clipboard access is strictly explicit: reading occurs only during Paste, and writing occurs only during Copy. On Windows and Linux, the Sleeper page lists active physical IPv4 adapters and reports OS wake settings. Enabling wake mutates only the selected adapter using standard system tools (`powercfg` on Windows, `ethtool` on Linux). Linux `ethtool` settings apply to the running system and may require NetworkManager configuration to persist across reboots. The app never installs automatic startup items or mutates system firewalls.
 
+Sleeper uses existing process permissions only. It never requests UAC or polkit approval and never elevates temporary scripts. Permission denial requires separate administrator-controlled OS configuration. Do not elevate the whole app. Stored Magic Packet settings and driver activation are separate: activation is unverified unless established independently. Known pending restart advisories must survive subsequent inspection within the process; a new app process starts with unknown activation history.
+
 ## Delivery and verification
 
 Source-visible proprietary material and downloadable official Android, Windows, Linux and CLI releases. Earlier MIT grants and third-party licenses remain valid. Signed Android App Bundle for Google Play internal testing. Application ID com.majkeylab.seliawake. Wakeit already names existing Wake-on-LAN tools, so use the user's fallback name Selia Wake. Version 0.3.0 adds the Sleeper role, target setup exchange and theme previews in Settings.

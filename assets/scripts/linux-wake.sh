@@ -75,8 +75,8 @@ linux_wake_main() {
         builtin printf '%s\n' 'ethtool is missing at a supported system path.' >&2
         return 69
     fi
-    # Runs after pkexec approval, immediately before replacing this process with
-    # the fixed ethtool command. The app also checks the identity after it exits.
+    # Runs with ordinary privileges, immediately before replacing this process
+    # with fixed ethtool. The app also checks the identity after it exits.
     linux_wake_check_identity /sys "$2" "$3" "$4" || return "$?"
     if [[ $1 == enable ]]; then
         exec "$ethtool" -s "$2" wol g
