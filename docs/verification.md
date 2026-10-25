@@ -369,5 +369,17 @@ Google Play internal-track availability must be checked in Play Console separate
   checkbox. Native OS configuration remains a separate manual step.
 * `flutter build windows --release --no-pub` failed locally because
   `flutter_secure_storage_windows` could not find `atlstr.h`. The standalone
-  bundled PowerShell backend was exercised live; a new desktop GUI build and
-  physical wake remain separate verification requirements.
+  bundled PowerShell backend was exercised live. The subsequent
+  [CI run](https://github.com/Majkey25/selia-wake/actions/runs/40202516535)
+  passed every job at `573af3995cade649eba1ab1118c357e4818c69d0`, including the
+  Windows build. Its downloaded package contains the matching helper source
+  after Git line-ending normalization. That portable CI build launched on this
+  PC in Sleeper mode and visibly displayed the correct inactive-capability
+  warning. It did not replace the installed 0.3.1 release.
+* Another real Windows GUI request through the Android Waker delivered the
+  exact configured 102-byte packet at 14:33:01 UTC. Android reported the same
+  foreground ServiceRecord, running for over 53 minutes, with the screen still
+  off before and after the request. An initial receiver window expired during
+  GUI setup; a fresh receiver and request produced the successful capture.
+  This extends the awake delivery check, not the physical S3 wake evidence.
+  The PC was returned to Sleeper mode with no TCP 45879 listener.
