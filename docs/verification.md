@@ -336,3 +336,38 @@ Google Play internal-track availability must be checked in Play Console separate
   newer Android lifecycle behavior and sustained background operation remain
   unverified. The published setup and privacy pages remain separate from
   application artifacts and the release source commit.
+
+### Continued awake-only diagnostics
+
+* A lower-level read found that the MT7922 reports inactive Magic Packet
+  capability through `MSNdis_PMCapabilities`, despite wake arming and the
+  enabled stored driver setting. The local SDK identifies this WMI query as
+  `GUID_NDIS_PM_ACTIVE_CAPABILITIES` and maps 0/1/2 to unsupported/inactive/active.
+  The selected device also reports `MSPower_DeviceEnable=False` and wake
+  permission True. This is a configuration discrepancy, not a proven cause
+  of the earlier failed S3 wake. PCI device and parent power data still report
+  D3 wake support; capability does not establish actual firmware arming.
+* The Windows helper now includes the NDIS capability in its existing detail
+  text. Unique physical-description and WMI matches are required. Missing,
+  ambiguous, denied or malformed data remains unknown. No new setter,
+  elevation or automatic restart was added. This follow-up source change is
+  separate from the published 0.3.1 application artifacts.
+* Both new regressions failed before the helper change and passed afterward.
+  The full 109-test Flutter suite, analysis and HTML checks passed. Sol max
+  source review found no confirmed P1/P2 in the diagnostic diff; it did not
+  rerun tests or independently verify the SDK mapping. Live production-helper
+  Inspect returned exit 0 and showed the expected inactive state on this PC.
+* A direct ordinary-token `Set-NetAdapterPowerManagement` attempt with
+  `-WakeOnMagicPacket Enabled -NoRestart` failed with "A device attached to the
+  system is not functioning." Subsequent reads still reported inactive wake
+  capability and disabled device power management. The getter also fails for
+  the disconnected Ethernet adapter, so that error does not establish an
+  MT7922-specific driver defect. No adapter restart or PC sleep was performed.
+* Device Manager opened elevated, but Windows integrity restrictions prevented
+  the automation helper from inspecting its controls or opening properties.
+  No guaranteed no-restart setter was established for its device power-management
+  checkbox. Native OS configuration remains a separate manual step.
+* `flutter build windows --release --no-pub` failed locally because
+  `flutter_secure_storage_windows` could not find `atlstr.h`. The standalone
+  bundled PowerShell backend was exercised live; a new desktop GUI build and
+  physical wake remain separate verification requirements.

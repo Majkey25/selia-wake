@@ -110,13 +110,32 @@ function Get-WakeSnapshot {
     $devices = @()
     try { $devices = @(Get-CimInstance -ClassName Win32_PnPEntity -OperationTimeoutSec 10) }
     catch { $queryErrors += "Device identity could not be read: $($_.Exception.Message)" }
+    $ndisCapabilities = @()
+    try { $ndisCapabilities = @(Get-CimInstance -Namespace root/wmi -ClassName MSNdis_PMCapabilities -OperationTimeoutSec 5) }
+    catch { $queryErrors += "NDIS wake capability could not be read: $($_.Exception.Message)" }
     $addresses = @(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.AddressState -eq 'Preferred' -and -not $_.SkipAsSource })
-    $entries = @(foreach ($adapter in @(Get-NetAdapter -Physical | Sort-Object InterfaceIndex)) {
+    $physicalAdapters = @(Get-NetAdapter -Physical | Sort-Object InterfaceIndex)
+    $entries = @(foreach ($adapter in $physicalAdapters) {
         if (-not $adapter.HardwareInterface -or $adapter.Virtual -or $adapter.Status -ne 'Up' -or $adapter.InterfaceType -notin @(6, 71)) { continue }
         $address = @($addresses | Where-Object { $_.InterfaceIndex -eq $adapter.InterfaceIndex } | Sort-Object IPAddress | Select-Object -First 1)
         if ($address.Count -eq 0) { continue }
         $magic = Get-MagicSetting $adapter
         $detail = @($magic.Detail) + $queryErrors
+        $ndisState = 'unknown'
+        $matchingCapabilities = @($ndisCapabilities | Where-Object { $_.InstanceName -eq $adapter.InterfaceDescription })
+        $sameDescription = @($physicalAdapters | Where-Object { $_.InterfaceDescription -eq $adapter.InterfaceDescription })
+        if ($matchingCapabilities.Count -eq 1 -and $sameDescription.Count -eq 1) {
+            try {
+                $value = $matchingCapabilities[0].PMCapabilitiesParam.WakeOnMagicPacket.NdisPMCapabilityState
+                if (($value -is [uint32] -or $value -is [int]) -and $value -in @(0, 1, 2)) {
+                    $ndisState = @('unsupported', 'inactive', 'active')[$value]
+                }
+            } catch { $detail += 'The NDIS capability report could not be decoded.' }
+        }
+        $detail += "NDIS Magic Packet capability: $ndisState."
+        if ($ndisState -eq 'inactive') {
+            $detail += 'Check the selected adapter power-management options in native Windows settings; the stored Magic Packet setting alone is insufficient.'
+        }
         $deviceName = $null
         $identity = @($devices | Where-Object { $_.DeviceID -eq $adapter.PnPDeviceID })
         if ($identity.Count -eq 1 -and -not [string]::IsNullOrWhiteSpace($identity[0].Name)) {
@@ -136,7 +155,7 @@ function Get-WakeSnapshot {
         } else {
             $detail += 'The adapter cannot be mapped uniquely to a powercfg device; wake capability and arming are unknown.'
         }
-        $detail += 'Windows settings do not verify firmware support or physical wake. Magic Packet is a stored driver setting; its activation and prior restart history are unknown from a fresh inspection.'
+        $detail += 'Windows settings and reported NDIS capability do not verify firmware wake arming or physical wake. Magic Packet is a stored driver setting; prior restart history is unknown from a fresh inspection.'
         $report = [ordered]@{
             id = ([guid] $adapter.InterfaceGuid).ToString('D')
             name = [string] $adapter.Name

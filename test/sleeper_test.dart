@@ -428,7 +428,10 @@ void main() {
       );
       expect(adapter['magicPacketEnabled'], isTrue);
       expect(adapter['restartRequired'], isFalse);
-      expect(adapter['detail'], contains('activation'));
+      expect(
+        adapter['detail'],
+        contains('do not verify firmware wake arming or physical wake'),
+      );
       expect(adapter['detail'], contains('unknown'));
     });
 
@@ -453,6 +456,56 @@ void main() {
         final (result, trace) = await fixture.run('configured');
         expect(result.exitCode, 0, reason: '${result.stdout} ${result.stderr}');
         expect(trace, isEmpty);
+      },
+    );
+
+    test(
+      'reports inactive NDIS wake despite an enabled stored setting',
+      () async {
+        final (result, trace) = await fixture.run(
+          'inactive-wake',
+          action: 'Inspect',
+        );
+        expect(result.exitCode, 0, reason: '${result.stdout} ${result.stderr}');
+        expect(trace, isEmpty);
+        final adapter = _windowsAdapter(
+          jsonDecode(result.stdout as String) as Map<String, Object?>,
+        );
+        expect(adapter['magicPacketEnabled'], isTrue);
+        expect(
+          adapter['detail'],
+          contains('NDIS Magic Packet capability: inactive'),
+        );
+      },
+    );
+
+    test(
+      'does not infer an active capability from unavailable NDIS data',
+      () async {
+        for (final scenario in [
+          'configured',
+          'ambiguous-wake',
+          'denied-wake',
+        ]) {
+          final (result, trace) = await fixture.run(
+            scenario,
+            action: 'Inspect',
+          );
+          expect(
+            result.exitCode,
+            0,
+            reason: '${result.stdout} ${result.stderr}',
+          );
+          expect(trace, isEmpty);
+          final adapter = _windowsAdapter(
+            jsonDecode(result.stdout as String) as Map<String, Object?>,
+          );
+          expect(adapter['magicPacketEnabled'], isTrue);
+          expect(
+            adapter['detail'],
+            contains('NDIS Magic Packet capability: unknown'),
+          );
+        }
       },
     );
 
@@ -1127,7 +1180,7 @@ foreach ($statement in $ast.EndBlock.Statements) {
 
 $script:scenario = $Scenario
 $script:armed = $Scenario -in @('configured', 'partial-magic')
-$script:magic = if ($Scenario -eq 'configured') { '1' } else { '0' }
+$script:magic = if ($Scenario -in @('configured', 'inactive-wake', 'ambiguous-wake', 'denied-wake')) { '1' } else { '0' }
 $script:trace = [Collections.Generic.List[string]]::new()
 $AdapterId = '12345678-1234-1234-1234-123456789abc'
 $ElevatedWorker = $false
@@ -1170,7 +1223,19 @@ function Get-NetIPAddress {
         IPAddress = '192.168.1.20'; PrefixLength = 24
     }
 }
-function Get-CimInstance {
+function Get-CimInstance([string] $ClassName) {
+    if ($ClassName -eq 'MSNdis_PMCapabilities') {
+        if ($script:scenario -eq 'denied-wake') { throw 'NDIS query denied.' }
+        if ($script:scenario -notin @('inactive-wake', 'ambiguous-wake')) { return }
+        $capability = [pscustomobject]@{
+            InstanceName = 'Fixture Ethernet'
+            PMCapabilitiesParam = [pscustomobject]@{
+                WakeOnMagicPacket = [pscustomobject]@{ NdisPMCapabilityState = 1 }
+            }
+        }
+        if ($script:scenario -eq 'ambiguous-wake') { return @($capability, $capability) }
+        return $capability
+    }
     return [pscustomobject]@{ DeviceID = 'FIXTURE\WAKE\1'; Name = $script:deviceName }
 }
 function Get-NetAdapterAdvancedProperty {
