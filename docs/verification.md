@@ -292,8 +292,47 @@ Google Play internal-track availability must be checked in Play Console separate
 * OSV returned no advisory matches for 145 resolved Pub, Android Maven and
   Go stdlib package/version coordinates. Pub resolution reported no advisories
   and did not change the lockfile. This is not a complete dependency audit.
-* Tailscale policy inspection is waiting for account sign-in. The preview
-  snapshot timed out twice; the local browser reached the login page.
-  No tailnet policy, firewall, router, RDP authentication or account setting
-  was changed. The Device panel still cannot start due to its retained daemon
-  lock format; ADB remains available. WSL is not installed on this host.
+* After account sign-in, the original Tailscale policy was backed up privately.
+  Its allow-all peer grant was replaced with member-to-self access. Members
+  retain Internet permission through exit nodes; no exit node was configured
+  or selected. Existing SSH rules were preserved. All four current devices
+  belong to the same owner. Four TCP policy tests with six Wake/RDP acceptance
+  assertions were accepted by the backend and displayed in the saved Tests UI.
+  Same-owner traffic remains unrestricted by port or protocol. The independent
+  Astra xhigh review found no confirmed P1/P2 or unintended current workflow
+  break. The offline laptop and IPv6 connectivity were not tested live.
+* The stable [GitHub release](https://github.com/Majkey25/selia-wake/releases/tag/v0.3.1)
+  was published from `309c351886d2b1fadd263321560705e822cf096f`.
+  Its [build run](https://github.com/Majkey25/selia-wake/actions/runs/40197251353)
+  passed every job, including Android JVM tests, desktop builds, Go race
+  checks and ESP32 compilation. All twelve uploaded asset digests matched
+  verified local files. APK signatures, version 0.3.1 (3012), 16 KB alignment
+  and AAB validation passed. Earlier release assets were not replaced.
+* Google Play reports 0.3.1 (3012) available to internal testers. The existing
+  tester list was retained. This does not establish production availability
+  or installation through Play. The exact Windows CI package and signed ARM64
+  APK were installed locally, preserving existing application data and pairing.
+* With the new policy active, the Windows GUI sent a wake request through
+  Tailscale to the physical Android Waker. An independent receiver on the
+  awake PC captured the exact configured 102-byte packet from the phone's
+  physical Wi-Fi address. A second GUI request did the same with the phone's
+  screen off; Android reported Asleep before and after reception. An invalid
+  HMAC request returned 401 without delivering UDP. Phone Check PC reached
+  the configured RDP service. These checks establish delivery and service
+  reachability, not hardware wake, host authenticity, boot completion or login.
+* Native Android battery optimization settings now exempt Selia Wake and
+  Tailscale only. Whitelist readback confirmed both entries. This can increase
+  battery use; the Waker should remain connected to power. No forced Doze or
+  unrelated phone power changes were used. Long-duration availability remains
+  unverified.
+* The PC was returned to The Sleeper with no TCP 45879 listener. The phone
+  was left with its Waker running and screen off. No PC sleep, restart,
+  adapter restart, driver/firmware update, firewall, router or RDP authentication
+  change occurred. Earlier Wi-Fi/S3 attempts failed; no hardware fix or
+  successful physical wake is established by this release.
+* The Device panel still cannot start because its pre-existing daemon.lock
+  is a file where a directory is expected; ADB supplied device verification.
+  WSL is not installed. Live Linux setup, ESP32 hardware, optical QR pairing,
+  newer Android lifecycle behavior and sustained background operation remain
+  unverified. The published setup and privacy pages remain separate from
+  application artifacts and the release source commit.

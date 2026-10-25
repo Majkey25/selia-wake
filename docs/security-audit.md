@@ -135,6 +135,15 @@ No router, firewall, Funnel, RDP authentication or tailnet policy was changed
 by this app. See [Tailscale access control](https://tailscale.com/docs/reference/syntax/grants)
 and [connection encryption](https://tailscale.com/docs/reference/connection-types).
 
+During 0.3.1 deployment verification, the operator separately replaced the
+tailnet's allow-all peer grant with member-to-self access after backing
+up its policy. Existing SSH rules and Internet permission were retained.
+Four saved TCP tests protect six current Wake/RDP paths. Same-owner access
+still allows all ports and protocols; this is not a port-specific restriction.
+The app does not manage Tailscale account policy. A real Windows-to-Android
+request delivered the exact LAN packet with the phone's screen off; a bad
+HMAC returned 401 without UDP. Neither result proves physical PC wake.
+
 Standard LAN magic packets are unencrypted and do not authenticate the sender.
 A trusted LAN is still required. Wake does not grant OS login or shell access.
 The Sleeper role does not start a Waker listener or accept privileged network
