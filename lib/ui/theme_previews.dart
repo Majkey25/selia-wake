@@ -47,11 +47,16 @@ class ThemePreviews extends StatelessWidget {
                   child: Semantics(
                     key: ValueKey('theme-preview-${style.name}'),
                     selected: value == style,
-                    child: WakeButton(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                       onPressed: onChanged == null
                           ? null
                           : () => onChanged!(style),
-                      label: Padding(
+                      child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
