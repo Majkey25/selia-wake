@@ -202,3 +202,24 @@ Google Play internal-track availability must be checked in Play Console separate
   corrects an obsolete Save instruction in the desktop target-sharing dialog
   and removes its unused translation. Version code 3010 remains an unpublished
   Play artifact; it is not substituted with different bytes.
+
+### Connection hardening before publication
+
+* A renewed MajkeyLab Astra max connection review found one P2: the desktop
+  request counter did not include incomplete HTTP headers. A real 24-socket
+  probe and two failing regressions confirmed the missing pre-header bounds.
+* The desktop listener now caps accepted connections at eight and gives each
+  a five-second absolute lifetime. The first implementation exposed a cleanup
+  problem because Socket.destroy does not complete IOSink.done. That version
+  was never published. Closed sockets are now pruned on accept; a 65-request
+  regression verifies that normal closed connections free capacity.
+* All 92 Flutter tests and analysis passed. Native Android authentication was
+  retested through Tailscale and the physical LAN. Invalid traffic produced no
+  UDP; two valid signed requests produced exactly two expected packets. The
+  QR and key existed only in the verification process memory.
+* A second MajkeyLab Astra max source review confirmed the pre-header fix
+  addresses the finding, with no new confirmed P1/P2 in that bounded snapshot.
+  Its verdict was source-only; the runtime checks above were run by the primary.
+* TCP 45879 had no listener on this PC after the tests with its GUI in Sleeper
+  mode. No app-specific firewall allowance was found. These observations do
+  not establish the complete Windows firewall or tailnet policy.

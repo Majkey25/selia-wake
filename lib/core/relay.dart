@@ -6,6 +6,9 @@ import 'package:flutter/services.dart';
 
 import 'protocol.dart';
 
+const _maxConnections = 8;
+const _connectionDeadline = Duration(seconds: 5);
+
 class NetworkInfo {
   const NetworkInfo({this.lanIp, this.broadcast, this.tailscaleIp});
   final String? lanIp;
@@ -39,6 +42,7 @@ class RelayConfig {
 class Relay {
   static const _channel = MethodChannel('selia_wake/relay');
   HttpServer? _server;
+  _BoundedServerSocket? _listener;
   String? _error;
   final _requests = <HttpRequest>{};
   bool get _android => Platform.isAndroid;
@@ -104,18 +108,29 @@ class Relay {
     if (!isLanAddress(config.lanIp)) throw const FormatException('invalid_lan');
     await stop();
     final authorizer = WakeAuthorizer(config.secret);
-    final server = await HttpServer.bind(
-      InternetAddress.anyIPv4,
-      relayPort,
-      shared: false,
+    final listener = _BoundedServerSocket(
+      await ServerSocket.bind(
+        InternetAddress.anyIPv4,
+        relayPort,
+        backlog: _maxConnections,
+        shared: false,
+      ),
     );
+    late final HttpServer server;
+    try {
+      server = HttpServer.listenOn(listener);
+    } catch (_) {
+      await listener.close();
+      rethrow;
+    }
     server.idleTimeout = const Duration(seconds: 5);
     server.defaultResponseHeaders.clear();
     _error = null;
+    _listener = listener;
     _server = server;
     server.listen(
       (request) {
-        if (_requests.length >= 8) {
+        if (_requests.length >= _maxConnections) {
           request.response.statusCode = 503;
           unawaited(request.response.close());
           return;
@@ -229,8 +244,75 @@ class Relay {
       return;
     }
     final server = _server;
+    final listener = _listener;
     _server = null;
-    await server?.close(force: true);
-    _requests.clear();
+    _listener = null;
+    try {
+      await server?.close(force: true);
+    } finally {
+      await listener?.close();
+      _requests.clear();
+    }
+  }
+}
+
+// Bound accepted sockets before HttpServer parses their headers.
+class _BoundedServerSocket extends Stream<Socket> implements ServerSocket {
+  _BoundedServerSocket(this._socket);
+  final ServerSocket _socket;
+  final _connections = <Socket, Timer>{};
+
+  @override
+  InternetAddress get address => _socket.address;
+  @override
+  int get port => _socket.port;
+
+  void _release(Socket socket) => _connections.remove(socket)?.cancel();
+
+  void _pruneClosed() {
+    // HttpServer destroys sockets without completing their IOSink.done future.
+    _connections.removeWhere((socket, timer) {
+      try {
+        socket.remotePort;
+        return false;
+      } on SocketException {
+        timer.cancel();
+        return true;
+      }
+    });
+  }
+
+  @override
+  StreamSubscription<Socket> listen(
+    void Function(Socket)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) => _socket.listen(
+    (socket) {
+      _pruneClosed();
+      if (_connections.length >= _maxConnections) {
+        socket.destroy();
+        return;
+      }
+      _connections[socket] = Timer(_connectionDeadline, () {
+        _release(socket);
+        socket.destroy();
+      });
+      onData?.call(socket);
+    },
+    onError: onError,
+    onDone: onDone,
+    cancelOnError: cancelOnError,
+  );
+
+  @override
+  Future<ServerSocket> close() async {
+    for (final socket in _connections.keys.toList()) {
+      _release(socket);
+      socket.destroy();
+    }
+    await _socket.close();
+    return this;
   }
 }

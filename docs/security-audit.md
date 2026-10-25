@@ -1,4 +1,4 @@
-# Bounded security audit, 24 October 2026
+# Bounded security audit
 
 Scope: Flutter pairing, configuration and HTTP relay; Android relay authentication, request parsing, service and QR boundary; manifest and privacy text. This is a source review with focused runtime checks, not a security certification or exhaustive penetration test.
 
@@ -58,7 +58,49 @@ The scanner activity is not exported. Barcode-image saving and the scan beep are
 
 ## Remaining limits
 
-The relay is reachable on network interfaces beyond Tailscale where the OS permits it. HMAC authorizes wake requests; Tailscale ACLs and the desktop firewall should restrict reachability. A pairing key grants the ability to wake the configured target. The app has no in-app key rotation control. Deleting a User pairing does not revoke another copy. Resetting Android Waker app data removes its configuration and generates a new key on next launch.
+### 25 October 2026 connection review
+
+MajkeyLab Astra max independently identified a P2 in the desktop GUI: its
+eight-request cap ran after headers, leaving incomplete TCP/HTTP connections
+outside that count. A real loopback probe retained 24 such connections after
+six seconds. Two regression tests failed before the fix.
+
+The desktop listener now bounds accepted TCP connections before HTTP parsing
+and closes each after at most five seconds. Excess connections close
+immediately. Completed sockets are pruned before accepting another, and stop
+closes both the HTTP server and its owned socket listener. Three real-socket
+tests cover connection capacity, absolute lifetime, and valid authentication
+after 65 malformed requests. The complete 92-test suite and analysis passed.
+A second source review confirmed the reported issue was addressed and found
+no new P1/P2 within the supplied implementation. It did not independently
+execute the tests or certify the application.
+
+On the physical Android Waker, a fresh test made 35 unauthenticated connections,
+then tried wrong HMAC, malformed JSON, an extra target MAC, oversized bodies,
+queries, expired/future timestamps and replay. All were rejected without UDP
+delivery. Oversized and invalid-route requests could close with a TCP reset
+instead of an HTTP response. Two valid signed requests each delivered the exact
+configured packet. A physical LAN client without the key received HTTP 401.
+No pairing key or QR image was saved in evidence. The PC stayed awake.
+
+The GUI listener can be reachable on the physical LAN as well as Tailscale.
+HMAC authenticates requests; it does not encrypt that LAN endpoint. Tailscale
+encrypts traffic carried through its VPN. Its default tailnet policy can allow
+all peers, so restrict access to intended User devices on TCP 45879. Grants
+are additive: a narrow grant does not cancel an existing broad allowance.
+No router, firewall, Funnel, RDP authentication or tailnet policy was changed
+by this app. See [Tailscale access control](https://tailscale.com/docs/reference/syntax/grants)
+and [connection encryption](https://tailscale.com/docs/reference/connection-types).
+
+Standard LAN magic packets are unencrypted and do not authenticate the sender.
+A trusted LAN is still required. Wake does not grant OS login or shell access.
+The Sleeper role does not start a Waker listener or accept privileged network
+commands. These checks do not establish that every dependency, OS, firmware,
+network policy or deployment is free of vulnerabilities.
+
+### Earlier deployment limits
+
+The relay is reachable on network interfaces beyond Tailscale where the OS permits it. HMAC authorizes wake requests; Tailscale ACLs and the desktop firewall should restrict reachability. A pairing key grants the ability to wake the configured target. Reset defaults rotates the Waker key and clears connections. Deleting a User pairing does not revoke another copy. Revert changes can restore the prior key during the same Settings visit.
 
 Bounded connection and request handling does not guarantee resistance to sustained resource exhaustion. Device compromise, stolen pairing keys, Tailscale account security, OS keyring failures, dependency supply-chain security and firmware vulnerabilities remain outside this bounded test. No claim is made that every dependency is vulnerability-free.
 
