@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import '../core/protocol.dart';
 import '../core/relay.dart';
 import '../core/settings.dart';
+import '../core/target.dart';
 import 'controls.dart';
 import 'settings_page.dart';
+import 'sleeper_page.dart';
 import 'strings.dart';
 
 class WakeHome extends StatefulWidget {
@@ -25,6 +27,8 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
   bool _statusFailed = false;
   bool _refreshing = false;
   bool _busy = false;
+  bool _checking = false;
+  int _checkEpoch = 0;
   bool _editing = false;
   bool _foreground = true;
   bool _messageError = false;
@@ -44,8 +48,18 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
 
   void _startPolling() {
     _timer?.cancel();
+    if (widget.settings.role == DeviceRole.sleeper) return;
     unawaited(_refresh());
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _refresh());
+  }
+
+  @override
+  void didUpdateWidget(covariant WakeHome oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.settings.role != widget.settings.role) {
+      _epoch++;
+      if (_foreground) _startPolling();
+    }
   }
 
   @override
@@ -57,6 +71,15 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
       _timer?.cancel();
       _timer = null;
       _epoch++;
+      _checkEpoch++;
+      if (_checking) {
+        setState(
+          () => _message = Strings.of(context).text(
+            'Check interrupted. Check again when you return.',
+            'Kontrola přerušena. Po návratu ji spusťte znovu.',
+          ),
+        );
+      }
     }
   }
 
@@ -88,6 +111,7 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _checkEpoch++;
     // Android's foreground service owns its lifetime independently of this view.
     if (!Platform.isAndroid) unawaited(_relay.stop());
     super.dispose();
@@ -240,6 +264,9 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
             _message = s.sent;
             _messageError = false;
           });
+          if (settings.targetHost.isNotEmpty && _foreground) {
+            await _verify(wait: true);
+          }
         }
       }
     } catch (error) {
@@ -255,8 +282,66 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _verify({bool wait = false}) async {
+    final settings = widget.settings;
+    final s = Strings.of(context);
+    final epoch = ++_checkEpoch;
+    setState(() {
+      _busy = true;
+      _checking = true;
+      _messageError = false;
+      _message = wait
+          ? s.text(
+              'Packet sent. Waiting for the PC, up to 60 seconds…',
+              'Paket odeslán. Čekám na PC, nejvýše 60 sekund…',
+            )
+          : s.text('Checking computer…', 'Ověřuji počítač…');
+    });
+    try {
+      final reachable = await checkTarget(
+        settings.targetHost,
+        settings.targetPort,
+        wait: wait ? const Duration(seconds: 60) : Duration.zero,
+        cancelled: () => !mounted || !_foreground || epoch != _checkEpoch,
+      );
+      if (!mounted || epoch != _checkEpoch) return;
+      setState(() {
+        _message = reachable
+            ? s.text(
+                'PC responds. The configured TCP service is reachable. Boot and login are not verified.',
+                'PC odpovídá. Nastavená TCP služba je dostupná. Dokončení bootu a přihlášení není ověřené.',
+              )
+            : s.text(
+                'PC did not respond. It may be asleep, offline, or blocked by a firewall. Check the address and service.',
+                'PC neodpovídá. Může spát, být odpojené nebo blokované firewallem. Zkontrolujte adresu a službu.',
+              );
+      });
+    } catch (error) {
+      if (mounted && epoch == _checkEpoch) {
+        setState(() {
+          _message = s.failure(error);
+          _messageError = true;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _checking = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.settings.role == DeviceRole.sleeper) {
+      return SleeperPage(
+        settings: widget.settings,
+        save: _save,
+        openSettings: _openSettings,
+      );
+    }
     final s = Strings.of(context);
     final settings = widget.settings;
     final theme = Theme.of(context);
@@ -391,6 +476,31 @@ class _WakeHomeState extends State<WakeHome> with WidgetsBindingObserver {
                                     color: _messageError ? scheme.error : null,
                                   ),
                                 ),
+                              ),
+                            ),
+                          if (settings.targetHost.isNotEmpty)
+                            WakeButton(
+                              subtle: true,
+                              onPressed: _checking
+                                  ? () => setState(() {
+                                      _checkEpoch++;
+                                      _message = s.text(
+                                        'Check cancelled.',
+                                        'Kontrola zrušena.',
+                                      );
+                                    })
+                                  : _busy || _editing
+                                  ? null
+                                  : () => _verify(),
+                              icon: Icon(
+                                _checking
+                                    ? Icons.close_rounded
+                                    : Icons.network_check_rounded,
+                              ),
+                              label: Text(
+                                _checking
+                                    ? s.text('Cancel check', 'Zrušit kontrolu')
+                                    : s.text('Check PC', 'Ověřit PC'),
                               ),
                             ),
                           if (waker && _statusFailed)

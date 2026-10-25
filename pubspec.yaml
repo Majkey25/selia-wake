@@ -1,7 +1,7 @@
 name: seliawake
 description: One-tap Wake-on-LAN through your own Tailscale devices.
 publish_to: none
-version: 0.2.0+3006
+version: 0.3.0+3009
 environment:
   sdk: '>=3.10.0 <4.0.0'
 dependencies:
@@ -20,6 +20,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 flutter:
   uses-material-design: true
+  assets:
+    - assets/scripts/windows-wake.ps1
+    - assets/scripts/linux-wake.sh
   fonts:
     - family: IBM Plex Mono
       fonts:

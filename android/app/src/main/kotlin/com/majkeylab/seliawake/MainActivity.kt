@@ -74,7 +74,7 @@ class MainActivity : FlutterFragmentActivity() {
                                     .setBeepEnabled(false)
                                     .setBarcodeImageEnabled(false)
                                     .addExtra(Intents.Scan.SHOW_MISSING_CAMERA_PERMISSION_DIALOG, false)
-                                    .setPrompt(if (language == "cs") "Načtěte párovací QR kód budiče" else "Scan the Waker's pairing QR code"))
+                                    .setPrompt(if (language == "cs") "Načtěte QR kód Selia Wake" else "Scan a Selia Wake QR code"))
                             } catch (_: Exception) {
                                 pendingScan = null
                                 throw RelayFailure("scanner_failed")

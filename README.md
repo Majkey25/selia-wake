@@ -10,7 +10,7 @@
 [![CLI x64, ARM64 and ARMv7](https://img.shields.io/badge/CLI-x64%20%7C%20ARM64%20%7C%20ARMv7-00ADD8?style=flat-square&logo=go&logoColor=white)](docs/cli.md)
 [![Tailscale required](https://img.shields.io/badge/Tailscale-required-242424?style=flat-square&logo=tailscale&logoColor=white)](https://majkey25.github.io/selia-wake/setup.html)
 
-Wake your computer through your own Tailscale devices. One primary action, standard controls, useful icons and no decorative graphics. No Selia Wake account, ads, subscription or developer-operated relay.
+Wake your computer through your own Tailscale devices. One primary action, standard controls, useful icons and no decorative graphics. No Selia Wake account, ads, subscription or developer-operated relay. Desktop versions also include The Sleeper role to configure local Wake-on-LAN and export target details.
 
 [Website](https://majkey25.github.io/selia-wake/) | [Downloads](https://github.com/Majkey25/selia-wake/releases) | [Setup](https://majkey25.github.io/selia-wake/setup.html) | [Terminal](docs/cli.md) | [Privacy](https://majkey25.github.io/selia-wake/privacy.html) | [Support](https://majkey25.github.io/selia-wake/support.html)
 
@@ -34,11 +34,11 @@ The CLI is a single executable with no Flutter, GTK or keyring dependency. GUI a
 
 ## Connect your devices
 
-1. Enable Wake-on-LAN in the target's firmware and connected network adapter. Use the MAC of that adapter. Wi-Fi targets require WoWLAN support in the adapter, driver and firmware. [Wireless setup](https://majkey25.github.io/selia-wake/setup.html#wowlan) includes the Windows checks. A normal phone charging cable does not provide USB remote wake.
-2. Install Tailscale separately on your always-awake **Waker** and remote **User** device. Connect both to your tailnet. Keep the Waker on the target's physical LAN. A spare phone, laptop, desktop or Raspberry Pi can fill this role. The sleeping target cannot be its own Waker.
-3. In the home device's Settings, choose The Waker, enter the target MAC, LAN broadcast and Waker Tailscale IPv4. On desktop, also confirm its physical LAN source IPv4. Save and start it. Android uses a visible foreground service. Desktop GUI must stay open. Check laptop sleep and lid-close settings yourself.
+1. Enable Wake-on-LAN in the target's firmware and connected network adapter. On Windows and Linux desktop, you can also run Selia Wake on the target PC in **The Sleeper** role to inspect physical adapters and configure OS wake settings. These software controls adjust OS settings only; BIOS/UEFI firmware settings (such as APM configuration and PCIe/WoWLAN wake) must still be verified in hardware firmware. On Linux, `ethtool` settings apply at runtime and may require NetworkManager configuration to persist across reboots. Sleeper exports a target setup QR code or link containing network details (MAC, IP, broadcast), but **no secret key**. Clipboard writing occurs only on explicit Copy. Wi-Fi targets require WoWLAN support in the adapter, driver and firmware. [Wireless setup](https://majkey25.github.io/selia-wake/setup.html#wowlan) includes the Windows checks. A normal phone charging cable does not provide USB remote wake.
+2. Install Tailscale separately on your always-awake **Waker** and remote **User** device. Connect both to your tailnet. Keep the Waker on the target's physical LAN. A spare phone, laptop, desktop or Raspberry Pi can fill this role. The sleeping target cannot be its own Waker. If you want remote availability checking, also install Tailscale on the target PC.
+3. In the home device's Settings, choose The Waker. Enter the target details manually or click **Paste Sleeper setup** (or **Scan Sleeper QR** on Android) to import from The Sleeper; review the preview and press **Save settings** to commit. Confirm LAN broadcast and Waker Tailscale IPv4. On desktop, also confirm its physical LAN source IPv4. Save and start it. Android uses a visible foreground service. Desktop GUI must stay open. Check laptop sleep and lid-close settings yourself. To test local broadcast transmission without remote pairing, use **Send local test packet** in Waker Settings.
 4. Open Pairing link / QR on The Waker. On User, scan on Android or paste the link, review the name and address, then save. Both forms contain the same secret. Transfer them privately. Camera frames stay on-device; clipboard access requires an explicit action.
-5. Press Wake. “Packet sent” confirms a UDP send, not that the target booted. Keep the Waker powered and Tailscale connected. No automatic startup or firewall changes are installed.
+5. Press Wake. “Packet sent” confirms a UDP send, not that the target booted. You can optionally configure **Check computer availability** with the target PC's IPv4 and a TCP port (such as RDP 3389 or SSH 22). When configured, User checks reachability for up to 60 seconds while foregrounded. A successful connection confirms that the TCP service is reachable, not that boot or login completed. Failure is inconclusive because a firewall or stopped service behaves like sleep. Keep the Waker powered and Tailscale connected. No automatic startup or firewall changes are installed.
 
 ## Use the terminal
 
@@ -56,6 +56,8 @@ On the User computer, run `./seliawake pair --stdin`, paste the private pairing 
 
 Platform style is the default. Android uses Material 3 with dynamic colors where available. Windows uses Fluent controls. Linux uses standard Flutter controls with a desktop palette. Flutter renders these controls itself; they are not OS-owned GTK or WinUI widgets.
 
+Settings groups device setup, network checks and appearance with familiar icons and a header Save action. Each theme has a preview using its actual palette, font and button style. Theme selection stays in the draft until you save.
+
 Material You, Terminal, Matrix and Custom are available. Custom exposes accent, background, surface, text, secondary text, borders and error colors, font family, size, corner radius and border width. Preview before saving. Light, dark and system modes remain available; Matrix is dark and Custom keeps your chosen palette. English and Czech app UI. Public pages and documentation are English.
 
 ## Network and storage
@@ -68,7 +70,7 @@ The GUI uses OS secure storage. The CLI uses an unencrypted local configuration 
 
 ## Maintainer builds
 
-Source inspection is public. Building new proprietary material requires license permission, except for the personal ESP32 build permission in [LICENSE](LICENSE). Historical MIT material keeps its earlier grant.
+Source inspection is public. Building new proprietary material requires license permission, except for the personal ESP32 build permission in [LICENSE](LICENSE). Historical MIT material keeps its earlier grant. The Sleeper role, target setup exchange and theme previews require version 0.3.0 or newer. Hardware wake depends on the target: this development PC did not wake over Wi-Fi in the recorded S3 tests, despite correct packet delivery while awake.
 
 GUI toolchain: Flutter 3.47.8, Dart 3.13.7, JDK 17, Android SDK 36. Build desktop targets on their own OS. Linux needs Clang, CMake, Ninja, pkg-config, GTK 3 and libsecret development files. Windows needs Visual Studio C++ desktop tools including ATL.
 

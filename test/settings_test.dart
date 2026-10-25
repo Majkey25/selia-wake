@@ -7,6 +7,55 @@ import 'package:seliawake/core/protocol.dart';
 import 'package:seliawake/core/settings.dart';
 
 void main() {
+  test(
+    'Sleeper role and adapter survive save without changing either pairing key',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final settings = Settings(
+        wakerKey: randomKey(),
+        role: DeviceRole.sleeper,
+        sleeperAdapter: 'a3c58e5c-5da1-4d97-81fa-8172d9d61234',
+        pairing: Pairing(
+          host: '100.100.100.1',
+          key: randomKey(),
+          name: 'Home Waker',
+        ),
+        mac: '02:11:22:33:44:55',
+      );
+      final copy = settings.copy();
+      await SettingsStore().save(copy);
+      final restored = await SettingsStore().load();
+      expect(restored.role, DeviceRole.sleeper);
+      expect(restored.sleeperAdapter, settings.sleeperAdapter);
+      expect(restored.wakerKey, settings.wakerKey);
+      expect(restored.pairing?.key, settings.pairing?.key);
+      expect(restored.mac, settings.mac);
+    },
+  );
+
+  test(
+    'availability settings survive save and older records default to disabled',
+    () async {
+      final store = SettingsStore();
+      final key = randomKey();
+      FlutterSecureStorage.setMockInitialValues({
+        'settings-v1': jsonEncode({'wakerKey': key}),
+      });
+      final old = await store.load();
+      expect(old.targetHost, isEmpty);
+      expect(old.targetPort, 3389);
+      final next = old.copy()
+        ..targetHost = '100.73.153.127'
+        ..targetPort = 22;
+      await store.save(next);
+      final restored = await store.load();
+      expect(restored.targetHost, next.targetHost);
+      expect(restored.targetPort, 22);
+      expect(restored.wakerKey, key);
+      expect(old.targetHost, isEmpty);
+    },
+  );
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(

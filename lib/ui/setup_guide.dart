@@ -11,6 +11,13 @@ class SetupGuide extends StatelessWidget {
     final s = Strings.of(context);
     final steps = [
       (
+        s.text('Set up The Sleeper', 'Nastavte režim Spáč'),
+        s.text(
+          'On the Windows or Linux PC you want to wake, install Selia Wake and choose The Sleeper in Settings. Select the physical adapter that will stay connected during sleep. Inspect its OS wake settings, then press Enable wake if needed. Windows may ask for UAC approval, Linux may ask through polkit. Only the selected adapter is changed. The app does not edit BIOS, restart the adapter, change firewalls or install automatic startup. A driver setting may require a later restart; Linux ethtool settings may be lost after reboot or network reconfiguration. Review the reported limits. Export the Sleeper setup QR/link, import it in the awake Waker’s Settings and press Save. The setup contains network details but no pairing secret. Then pair the User with the Waker as usual. The target PC does not need to keep Selia Wake open while asleep. A sleeping PC still needs a separate awake Waker.',
+          'Na počítač s Windows nebo Linuxem, který chcete budit, nainstalujte Selia Wake a v nastavení vyberte Spáč. Zvolte fyzický adaptér, který zůstane připojený během spánku. Zkontrolujte jeho nastavení probouzení a podle potřeby stiskněte Povolit probouzení. Windows může požádat o schválení UAC, Linux přes polkit. Mění se pouze vybraný adaptér. Aplikace neupravuje BIOS, nerestartuje adaptér, nemění firewall ani nezapíná automatické spouštění. Změna ovladače může vyžadovat pozdější restart. Nastavení ethtool v Linuxu se může ztratit po restartu nebo změně sítě. Přečtěte si uvedená omezení. Exportujte QR nebo odkaz s nastavením spáče, načtěte jej v nastavení zapnutého budiče a uložte. Obsahuje síťové údaje, ale žádný párovací klíč. Poté běžně spárujte uživatele s budičem. Cílový počítač nemusí mít Selia Wake během spánku otevřenou. Stále ale potřebuje samostatný zapnutý budič.',
+        ),
+      ),
+      (
         s.text('1. Prepare the computer', '1. Připravte počítač'),
         s.text(
           'Use Ethernet, or Wi-Fi if the computer supports Wake on Wireless LAN (WoWLAN). Enable wake in its firmware and network adapter. Use the MAC address of the adapter that stays connected during sleep. Test from sleep first.',
@@ -56,6 +63,13 @@ class SetupGuide extends StatelessWidget {
         ),
       ),
       (
+        s.text('Check whether the PC responds', 'Ověřit, zda PC odpovídá'),
+        s.text(
+          'In Settings, enter the target computer’s Tailscale IPv4 and the TCP port of a service already running on it, such as RDP 3389 or SSH 22. Install Tailscale on the target PC too. A LAN address works only on the same LAN or with an explicitly configured subnet route. Press Check PC before your first sleep test to confirm the check works while the PC is awake. After Wake, the User app waits up to 60 seconds for this service. Keep the app in the foreground or the check stops. You can cancel it. A response proves service availability, not a completed boot or login. No response does not prove the PC is off. The service may be stopped or blocked by a firewall. Availability settings are local to each app and are not included in pairing links.',
+          'V nastavení zadejte Tailscale IPv4 cílového počítače a TCP port běžící služby, například RDP 3389 nebo SSH 22. Tailscale nainstalujte i na cílové PC. LAN adresa funguje jen ve stejné síti nebo s výslovně nastavenou trasou podsítě. Před prvním uspáním stiskněte Ověřit PC a ověřte, že kontrola funguje u zapnutého počítače. Po stisknutí Probudit čeká aplikace uživatele na službu až 60 sekund. Nechte aplikaci v popředí, jinak se kontrola přeruší. Lze ji zrušit. Odpověď prokazuje dostupnost služby, ne dokončený boot nebo přihlášení. Bez odpovědi nemusí být PC vypnuté. Služba může být zastavená nebo blokovaná firewallem. Nastavení kontroly je místní pro každou aplikaci a párovací odkaz je nepřenáší.',
+        ),
+      ),
+      (
         s.text('Wi-Fi and USB', 'Wi-Fi a USB'),
         s.text(
           'Wi-Fi wake requires WoWLAN support in the computer, firmware, and driver; use the Wi-Fi MAC. USB Ethernet works only with a powered, wake-capable USB network adapter. A charging cable between a phone and PC does not provide USB remote wake. A USB keyboard can wake a PC only if the device, firmware, and OS allow it. This app does not emulate a USB keyboard.',
@@ -82,8 +96,8 @@ class SetupGuide extends StatelessWidget {
       (
         s.text('If it does not work', 'Když probuzení nefunguje'),
         s.text(
-          'Check the selected adapter’s connection, MAC, firmware and driver wake settings, and home network isolation. On Windows, check powercfg /lastwake after a test. Connect The Waker to the same LAN. With a Tailscale exit node, allow local LAN access. For a desktop Waker, allow only the intended Tailscale peers through its firewall on TCP 45879. On Android, allow background operation for both apps and power the Waker from a wall charger.',
-          'Zkontrolujte připojení vybraného adaptéru, jeho MAC, probouzení ve firmwaru i ovladači a izolaci domácí sítě. Ve Windows po testu pomůže powercfg /lastwake. Budič musí být ve stejné místní síti. Při použití výstupního uzlu Tailscale povolte přístup do místní sítě. U budiče na počítači povolte ve firewallu TCP 45879 jen zamýšleným zařízením Tailscale. Na Androidu povolte běh obou aplikací na pozadí a napájejte budič ze síťové nabíječky.',
+          'Check the selected adapter’s connection, MAC, firmware and driver wake settings, and home network isolation. On Windows, use powercfg /a to identify the actual sleep state and powercfg /devicequery wake_armed to check arming. These do not prove firmware wake support. Check powercfg /lastwake after a test. On ASUS boards, check Advanced > APM Configuration > Power On By PCI-E in BIOS. A Wi-Fi card may expose wake settings while the motherboard or adapter cannot deliver a wake signal during S3. Selecting Wi-Fi in this app does not change the PC’s firmware. Connect The Waker to the same LAN. With a Tailscale exit node, allow local LAN access. For a desktop Waker, allow only the intended Tailscale peers through its firewall on TCP 45879. On Android, allow background operation for both apps and power the Waker from a wall charger.',
+          'Zkontrolujte připojení vybraného adaptéru, jeho MAC, probouzení ve firmwaru i ovladači a izolaci domácí sítě. Ve Windows příkaz powercfg /a ukáže používaný režim spánku a powercfg /devicequery wake_armed povolené zdroje probuzení. Tyto údaje neprokazují podporu ve firmwaru. Po testu použijte powercfg /lastwake. U desek ASUS zkontrolujte v BIOSu Advanced > APM Configuration > Power On By PCI-E. Wi-Fi karta může nabízet probouzení, i když deska nebo adaptér nedokáže předat probouzecí signál během S3. Volba Wi-Fi v aplikaci nemění firmware PC. Budič musí být ve stejné místní síti. Při použití výstupního uzlu Tailscale povolte přístup do místní sítě. U budiče na počítači povolte ve firewallu TCP 45879 jen zamýšleným zařízením Tailscale. Na Androidu povolte běh obou aplikací na pozadí a napájejte budič ze síťové nabíječky.',
         ),
       ),
     ];

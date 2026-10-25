@@ -11,6 +11,13 @@ class PrivacyPage extends StatelessWidget {
     final s = Strings.of(context);
     final sections = [
       (
+        s.text('The Sleeper and target setup', 'Spáč a nastavení cíle'),
+        s.text(
+          'The desktop Sleeper role reads local physical adapter names, addresses and OS wake settings. Enable wake changes only the selected adapter through the OS privilege prompt. No privileged action is accepted over the network. The exported setup QR/link contains the computer name, MAC, broadcast, connection type and optional target address and port, but no pairing key. Share these network details only with your intended Waker. Import is a draft until Save. The app does not change BIOS, firewalls or startup, and does not retain administrator credentials.',
+          'Desktopový režim Spáč čte názvy a adresy fyzických adaptérů a nastavení probouzení systému. Povolit probouzení mění pouze vybraný adaptér přes systémové potvrzení oprávnění. Aplikace nepřijímá privilegované příkazy ze sítě. Exportovaný QR kód nebo odkaz obsahuje název počítače, MAC, broadcast, typ připojení a volitelnou cílovou adresu a port, ale žádný párovací klíč. Tyto síťové údaje sdílejte pouze se svým budičem. Načtené údaje zůstávají návrhem do uložení. Aplikace nemění BIOS, firewall ani automatické spouštění a neukládá přihlašovací údaje správce.',
+        ),
+      ),
+      (
         s.text('Developer and contact', 'Vývojář a kontakt'),
         s.text(
           'Effective 24 October 2026. Selia Wake is maintained by Matěj Teplý, publishing as Majkey / MajkeyLab. Privacy and support: majkeylab@gmail.com. Do not send pairing secrets or screenshots of pairing QR codes.',
@@ -29,6 +36,16 @@ class PrivacyPage extends StatelessWidget {
         s.text(
           'Wake sends a timestamp, random nonce and HMAC signature to your paired Waker. The Waker broadcasts the target MAC on your LAN. Pairing links and QR codes transfer the Waker address, name and secret to devices you choose. Tailscale is a separate app and service that encrypts remote transport under its own privacy policy; Selia Wake does not receive its account credentials. Network/Wi-Fi permissions enable the relay, camera permission enables explicit QR scanning, and notifications plus a wake lock support the visible Android Waker service. A bounded in-memory replay cache rejects nonce reuse for at least 60 seconds and through the request timestamp\'s final accepted second. Expired entries are pruned when processing new requests. Android app backup is disabled.',
           'Probudit odešle čas, náhodný nonce a podpis HMAC spárovanému budiči. Budič vyšle cílovou MAC do místní sítě. Párovací odkaz a QR kód předají adresu, název a tajný klíč budiče vámi zvolenému zařízení. Tailscale je samostatná aplikace a služba, která šifruje vzdálený přenos podle vlastních zásad soukromí; Selia Wake nedostává její přihlašovací údaje. Síťová a Wi-Fi oprávnění umožňují provoz budiče, kamera slouží k výslovně spuštěnému skenování QR a oznámení se zámkem bdění podporují viditelnou službu budiče na Androidu. Omezená paměť ochrany proti opakování odmítá opakovaný nonce alespoň 60 sekund a až do konce časové platnosti požadavku. Prošlé položky se odstraní při zpracování dalších požadavků. Zálohování dat aplikace na Androidu je vypnuté.',
+        ),
+      ),
+      (
+        s.text(
+          'Optional availability checks',
+          'Volitelná kontrola dostupnosti',
+        ),
+        s.text(
+          'When configured, Check PC connects directly to the target IPv4 and TCP port you selected, without sending credentials or application data. After Wake, checks repeat for up to 60 seconds while the app is in the foreground. The address and port stay in the local secure settings. No result is sent to the developer. A response does not authenticate the computer or verify boot or login.',
+          'Pokud kontrolu nastavíte, Ověřit PC se připojí přímo ke zvolené cílové IPv4 a TCP portu bez odesílání přihlašovacích údajů nebo aplikačních dat. Po probuzení se kontrola opakuje až 60 sekund, dokud je aplikace v popředí. Adresa a port zůstávají v místním zabezpečeném nastavení. Výsledek se neposílá vývojáři. Odpověď neověřuje identitu počítače ani dokončení bootu nebo přihlášení.',
         ),
       ),
       (

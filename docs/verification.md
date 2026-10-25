@@ -79,3 +79,93 @@ Google Play internal-track availability must be checked in Play Console separate
 * Linux GUI execution, Raspberry Pi execution, ESP32 flashing/on-board behavior,
   sustained background availability and actual PC wake remain separate checks.
   The local Windows GUI build remains blocked by missing ATL `atlstr.h`.
+
+## 24 October 2026, local version 0.2.1
+
+* Added optional direct TCP target checks to the GUI. Existing records default
+  to disabled. User wake waits up to 60 seconds for the selected service.
+  A response proves reachability, not host identity, boot completion or login.
+  Pairing and relay protocol v1 are unchanged. CLI and ESP32 are unchanged.
+* All 32 Flutter tests passed, including real TCP listener/closed-port checks,
+  bounded waiting, delayed service start, cancellation and settings migration.
+  Flutter analysis, formatting and `git diff --check` passed.
+* Signed ARM64 Android 0.2.1 (3007) built and installed over 0.2.0 on the USB
+  HUAWEI YAL-L21. Signature matched the existing certificate and APK 16 KB zip
+  alignment passed. Existing target, pairing and appearance survived the update.
+* On that phone, Check PC reached the development PC's RDP service through
+  Tailscale. A different port returned the inconclusive no-response message.
+  Backgrounding interrupted a pending check without showing a stale result.
+  Availability settings survived a process restart.
+* Before and after the update, a real signed HTTP request through Tailscale
+  returned 200 and the awake PC independently received the exact configured
+  102-byte magic packet from the phone's physical Wi-Fi address. The QR and
+  pairing key were decoded in memory and were not retained in evidence.
+* The development PC reports ASUS PRIME B450-PLUS, MT7922 Wi-Fi, S3 sleep,
+  enabled Wake on Magic Packet and an armed Wi-Fi device. These do not prove
+  that firmware and the complete PCIe/Wi-Fi path can wake from S3. BIOS APM
+  settings were not accessible from this session. No sleep or reboot of the
+  development PC was attempted. Physical wake remains unverified.
+* A prompt-only Claude source review with tools disabled could not run because
+  its weekly quota was exhausted. Primary self-review and runtime checks are
+  the available evidence. No desktop build, Linux GUI run or Google Play/GitHub
+  publication was performed for this local version.
+
+## 25 October 2026, Sleeper and awake-PC diagnostics
+
+* Windows inspection identifies the active physical MT7922 Wi-Fi adapter and
+  its correct MAC and directed broadcast. Both wake arming and the recognized
+  Magic Packet property were already enabled. Inspect and idempotent Enable
+  returned fresh JSON without changing settings or restarting the adapter.
+* A real click on Wake in the installed Windows User GUI sent through its
+  existing paired Android Waker. An independent UDP listener on this awake PC
+  received the exact 102-byte magic packet from the phone's physical Wi-Fi.
+  This proves this awake network path, not successful hardware wake.
+* Two explicitly authorized S3 tests were performed before the user requested
+  awake-only debugging. First, the phone independently made three signed HTTP
+  wake requests and received three 200/sent responses while the PC slept. The
+  PC later resumed from a USB device, after about 66 seconds.
+* Second, the phone sent the exact packet directly to the target's LAN IPv4
+  at 30, 35 and 40 seconds. The PC resumed only from the absolute UTC fallback
+  timer, after about 92 seconds. Fresh Windows sleep/wake event timestamps and
+  phone send timestamps were correlated for both runs. Neither test succeeded
+  in waking this Wi-Fi/S3 setup. BIOS, firmware and driver compatibility remain
+  unresolved; no absence of capability on all MT7922 systems is inferred.
+* After the user requested awake-only debugging, no further suspend, shutdown
+  or restart was requested. No permanent power policy or firewall was changed.
+* Before final UI revisions, 58 Flutter tests, Flutter analysis, two Android
+  JVM tests, Windows Go tests/vet, and signed APK/AAB builds passed. Final
+  release validation is recorded separately after the review fixes and UI.
+* Independent MPT Astra xhigh source review found three P2 correctness issues:
+  imported target setup could save indirectly; Linux selection did not carry
+  displayed adapter identity across privilege approval; Windows /31 and /32
+  prefixes incorrectly produced broadcast addresses. Release remains gated on
+  fixes, regression checks and a follow-up source review.
+* MajkeyLab Astra max implemented Windows inspection/configuration; MajkeyLab
+  Sol 6.1 xhigh implemented the GUI; MPT Sol 6.1 max implemented the portable
+  core. Antigravity supplied bounded English documentation. OpenCode Argon high
+  failed with HTTP 402, insufficient funds. No funds were added. Beam xhigh and
+  DeepSeek high supplied bounded test advice, checked against source and runtime.
+
+### Final review fixes and local checks
+
+* Pending Sleeper imports now block pairing export and local test actions until
+  explicit Save. Regression coverage verifies that these actions cannot commit
+  a preview indirectly. Settings has grouped sections, a header Save action,
+  more icons and actual previews for all five theme choices.
+* Linux enable now requires the displayed MAC, carries the OS interface index,
+  revalidates physical sysfs identity inside the reviewed helper after polkit
+  approval, and verifies the same device afterward. Helper fixture tests run
+  real Bash validation, including startup/environment injection rejection.
+* Windows /31 and /32 prefixes now report no broadcast. Five live helper cases
+  passed, and the UI disables target export when broadcast is unknown.
+* Pairing export and local testing also block unsaved appearance changes,
+  including custom color edits. Two regressions failed before the fix and
+  passed afterward. Failed saves do not advance the saved appearance snapshot.
+* All 82 Flutter tests and final Flutter analysis passed.
+  A separate local integration test executed Sleeper.inspect through Flutter's
+  real bundled PowerShell asset and parsed the physical Windows adapter report.
+* A separate Claude prompt-only review returned no answer after 24 minutes and
+  was cancelled. It supplied no verdict. MPT Astra r2 confirmed the first three
+  fixes and found the appearance save issue. MPT Astra r3 confirmed that fix
+  with no remaining confirmed P1/P2 in its bounded source snapshot. These
+  source reviews did not independently execute tests or prove hardware wake.

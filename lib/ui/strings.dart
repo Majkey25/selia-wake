@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../core/protocol.dart';
+import '../core/settings.dart';
 
 class Strings {
   const Strings(this.czech);
@@ -16,6 +17,15 @@ class Strings {
 
   String text(String english, String czech) => this.czech ? czech : english;
   String get settings => text('Settings', 'Nastavení');
+  String get saveSettings => text('Save settings', 'Uložit nastavení');
+  String get appearance => text('Appearance', 'Vzhled');
+  String themeName(WakeTheme theme) => switch (theme) {
+    WakeTheme.platform => platformTheme,
+    WakeTheme.material => 'Material You',
+    WakeTheme.matrix => 'Matrix',
+    WakeTheme.terminal => 'Terminal',
+    WakeTheme.custom => text('Custom', 'Vlastní'),
+  };
   String get platformTheme => switch (defaultTargetPlatform) {
     TargetPlatform.windows => text('Platform (Fluent)', 'Platforma (Fluent)'),
     TargetPlatform.linux => text(
@@ -25,12 +35,30 @@ class Strings {
     _ => text('Platform (Material You)', 'Platforma (Material You)'),
   };
   String get platformStyleHelp => text(
-    'Choose a preset, or make your own with Custom. Save settings to apply the theme.',
-    'Vyberte hotový motiv, nebo si ve volbě Vlastní sestavte vlastní vzhled. Motiv použijete tlačítkem Uložit nastavení.',
+    'Tap a preview to choose. Save settings to apply.',
+    'Klepnutím na náhled vyberte motiv. Použijte tlačítko Uložit nastavení.',
+  );
+  String get saveImportedSetup => text(
+    'Save settings to apply imported setup first',
+    'Nejprve uložte nastavení, aby se načtené údaje použily',
   );
   String get retry => text('Retry', 'Zkusit znovu');
   String get user => text('User', 'Uživatel');
   String get waker => text('The Waker', 'Budič');
+  String get sleeper => text('The Sleeper', 'Spáč');
+  String get sleeperHelp => text(
+    'Configure this PC to receive wake packets. A separate Waker must stay awake on the same LAN. This mode does not keep this PC awake.',
+    'Nastavte tento počítač pro příjem probouzecích paketů. Samostatný budič musí zůstat zapnutý ve stejné místní síti. Tento režim neudržuje počítač vzhůru.',
+  );
+  String get networkDetails => text(
+    'This setup contains the computer name, MAC and network addresses. Share it only with your trusted Waker. It contains no secret key.',
+    'Nastavení obsahuje název počítače, MAC a síťové adresy. Sdílejte je pouze se svým důvěryhodným budičem. Neobsahuje tajný klíč.',
+  );
+  String get targetSetup => text('Sleeper setup', 'Nastavení spáče');
+  String get invalidSetup => text(
+    'Invalid Sleeper setup. Export a new target link from the Sleeper.',
+    'Neplatné nastavení spáče. Na spáči vytvořte nový odkaz počítače.',
+  );
   String get wake => text('Wake', 'Probudit');
   String get start => text('Start Waker', 'Spustit budič');
   String get stop => text('Stop Waker', 'Zastavit budič');
@@ -82,6 +110,10 @@ class Strings {
       _ => '',
     };
     return switch (code) {
+      'invalid_target' => text(
+        'Check the computer’s private or Tailscale IPv4 and TCP port in Settings.',
+        'Zkontrolujte soukromou nebo Tailscale IPv4 a TCP port počítače v nastavení.',
+      ),
       'invalid_mac' => macError,
       'invalid_lan' => lanError,
       'invalid_broadcast' => broadcastError,

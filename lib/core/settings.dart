@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'protocol.dart';
 
-enum DeviceRole { user, waker }
+enum DeviceRole { user, waker, sleeper }
 
 enum WakeTheme { platform, terminal, material, matrix, custom }
 
@@ -103,6 +103,9 @@ class Settings {
     this.broadcast = '',
     this.lanIp = '',
     this.wakerHost = '',
+    this.targetHost = '',
+    this.targetPort = 3389,
+    this.sleeperAdapter = '',
     required this.wakerKey,
     this.pairing,
   }) : customTheme = customTheme ?? CustomTheme();
@@ -117,6 +120,9 @@ class Settings {
   String broadcast;
   String lanIp;
   String wakerHost;
+  String targetHost;
+  int targetPort;
+  String sleeperAdapter;
   String wakerKey;
   Pairing? pairing;
 
@@ -132,6 +138,9 @@ class Settings {
     broadcast: broadcast,
     lanIp: lanIp,
     wakerHost: wakerHost,
+    targetHost: targetHost,
+    targetPort: targetPort,
+    sleeperAdapter: sleeperAdapter,
     wakerKey: wakerKey,
     pairing: pairing,
   );
@@ -148,6 +157,9 @@ class Settings {
     'broadcast': broadcast,
     'lanIp': lanIp,
     'wakerHost': wakerHost,
+    'targetHost': targetHost,
+    'targetPort': targetPort,
+    'sleeperAdapter': sleeperAdapter,
     'pairedHost': pairing?.host,
     'pairedName': pairing?.name,
   };
@@ -205,6 +217,14 @@ class SettingsStore {
       broadcast: string('broadcast'),
       lanIp: string('lanIp'),
       wakerHost: string('wakerHost'),
+      targetHost: string('targetHost'),
+      sleeperAdapter: string('sleeperAdapter'),
+      targetPort:
+          data['targetPort'] is int &&
+              (data['targetPort']! as int) >= 1 &&
+              (data['targetPort']! as int) <= 65535
+          ? data['targetPort']! as int
+          : 3389,
       wakerKey: wakerKey,
       pairing: pairedKey.isEmpty || string('pairedHost').isEmpty
           ? null
