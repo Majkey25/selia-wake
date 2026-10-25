@@ -215,11 +215,46 @@ Google Play internal-track availability must be checked in Play Console separate
   regression verifies that normal closed connections free capacity.
 * All 92 Flutter tests and analysis passed. Native Android authentication was
   retested through Tailscale and the physical LAN. Invalid traffic produced no
-  UDP; two valid signed requests produced exactly two expected packets. The
-  QR and key existed only in the verification process memory.
+  UDP; two valid signed requests produced exactly two expected packets.
+  No pairing key or QR image was retained in verification evidence.
 * A second MajkeyLab Astra max source review confirmed the pre-header fix
   addresses the finding, with no new confirmed P1/P2 in that bounded snapshot.
   Its verdict was source-only; the runtime checks above were run by the primary.
 * TCP 45879 had no listener on this PC after the tests with its GUI in Sleeper
   mode. No app-specific firewall allowance was found. These observations do
   not establish the complete Windows firewall or tailnet policy.
+
+### Published 0.3.0, version code 3011
+
+* The stable [GitHub release](https://github.com/Majkey25/selia-wake/releases/tag/v0.3.0)
+  was published on 25 October 2026 from
+  `56df1bc6bd06491582fb0bc2758b4990949b391b`. Its
+  [build run](https://github.com/Majkey25/selia-wake/actions/runs/40188695586)
+  passed every job: Flutter verification, Android build/JVM tests, Windows and
+  Linux desktop builds, Go tests/vet/race checks, and ESP32 checks/compilation.
+* The release contains four signed Android APKs, Windows/Linux GUI archives,
+  four CLI archives, ESP32 source, and SHA256SUMS. All twelve uploaded asset
+  digests matched the local files before publication. The release was read
+  back as public, stable and latest. No historical assets were replaced.
+* Android APK signatures match the existing certificate. All four APKs report
+  0.3.0 (3011) and pass 16 KB alignment checks. The signed AAB passed bundletool
+  validation and jarsigner verification. Google Play reports 0.3.0 (3011)
+  available to internal testers. The existing selected tester list was retained.
+  This does not establish production availability or installation through Play.
+* The final signed ARM64 APK was installed on the HUAWEI YAL-L21. Its existing
+  configuration survived, the Waker was started, and Check PC reached the
+  configured TCP service. Repeating the negative authentication tests on this
+  exact APK produced no invalid-request UDP and two exact packets for two valid
+  requests. The Waker was left listening. No PC sleep/restart was performed.
+* The final Windows CI package replaced only the installed program files; the
+  executable hash matched the release and application data was preserved.
+  The GUI launched in Sleeper mode and displayed the expected physical Wi-Fi
+  adapter, MAC, broadcast and S3 report. A new desktop GUI packet attempt timed
+  out while desktop interaction changed windows; it does not establish either
+  a successful click or a protocol failure. The earlier 3010 GUI packet test
+  and final 3011 phone protocol checks remain separate evidence.
+* Public setup and privacy pages returned HTTP 200. The connected Device panel
+  could not start because its pre-existing daemon.lock was a file where a
+  directory was expected; device checks used ADB instead. Real privileged Linux
+  changes, a completed GUI Enable wake action, Sleeper QR export, ESP32 flashing,
+  sustained background operation and successful physical wake remain unverified.
