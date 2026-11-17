@@ -17,6 +17,11 @@ jobs:
           flutter-version: '3.47.8'
           cache: true
       - run: flutter pub get
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: dependency-resolution-lockfile
+          path: pubspec.lock
+          if-no-files-found: error
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
@@ -25,18 +30,37 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-java@v5.0.0
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '17'
+          problem-matcher: true
       - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version: '3.47.8'
           cache: true
       - run: flutter pub get
       - run: flutter build apk --debug
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: selia-wake-android-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
       - run: ./gradlew :app:testDebugUnitTest
         working-directory: android
+      - run: ./gradlew wrapper --gradle-version 9.9.1 --distribution-type bin --gradle-distribution-sha256-sum d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228
+        working-directory: android
+      - run: ./gradlew wrapper --gradle-version 9.9.1 --distribution-type bin --gradle-distribution-sha256-sum d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228
+        working-directory: android
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: generated-gradle-wrapper
+          path: |
+            android/gradle/wrapper/gradle-wrapper.properties
+            android/gradle/wrapper/gradle-wrapper.jar
+            android/gradlew
+            android/gradlew.bat
+          if-no-files-found: error
   desktop:
     needs: verify
     strategy:
@@ -73,6 +97,29 @@ jobs:
           name: selia-wake-${{ matrix.platform }}-x64
           path: selia-wake-${{ matrix.platform }}-x64.*
           if-no-files-found: error
+  baseline-android:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: da87ff76c7a91380237083af6761fe2f77ed2b37
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          problem-matcher: true
+      - uses: subosito/flutter-action@v2.23.0
+        with:
+          flutter-version: '3.47.8'
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter build apk --debug
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: selia-wake-android-baseline-da87ff7
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
   cli:
     needs: verify
     strategy:
@@ -85,9 +132,9 @@ jobs:
         working-directory: cli
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-go@v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
-          go-version: '1.27.3'
+          go-version: '1.27.4'
           cache: false
       - run: go test ./...
       - run: go vet ./...
@@ -132,9 +179,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: arduino/setup-arduino-cli@v2.0.0
+      - uses: arduino/setup-arduino-cli@b3cda96fddef6af6c56b4c5efb5c47e2357935db # v2.1.0
         with:
-          version: '1.5.1'
+          version: '1.6.0'
       - run: c++ -std=c++17 -Wall -Wextra -Werror firmware/tests/protocol_test.cpp -o /tmp/seliawake-protocol-test
       - run: /tmp/seliawake-protocol-test
       - run: arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
