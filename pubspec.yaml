@@ -9,7 +9,7 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  crypto: ^3.0.6
+  crypto: ^3.0.8
   dynamic_color: ^1.8.1
   fluent_ui: ^4.17.0
   flutter_secure_storage: ^10.0.0

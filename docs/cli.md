@@ -17,7 +17,7 @@ license does not grant general permission to build the CLI. Users may install
 and use unmodified official releases as described in that license.
 
 Authorized maintainers need a current supported Go toolchain, Go 1.25 or newer.
-CI uses Go 1.27.3. From `cli/`:
+CI uses Go 1.27.4. From `cli/`:
 
 ```sh
 go test -count=1 ./...
