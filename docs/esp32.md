@@ -30,7 +30,7 @@ The license permits personal builds of the unmodified official firmware for
 your own devices. Other new source builds need the permission described in
 [LICENSE](../LICENSE). Dependencies retain their own licenses.
 
-Use Arduino CLI 1.5.1 and ESP32 Arduino core 3.3.12. Install them from the
+Use Arduino CLI 1.6.0 and ESP32 Arduino core 3.3.12. Install them from the
 [Arduino CLI project](https://arduino.github.io/arduino-cli/) and
 [Espressif's official instructions](https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html).
 The following board target is the generic ESP32 Dev Module. Confirm the exact
